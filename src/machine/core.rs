@@ -132,6 +132,12 @@ impl Core {
             Mul(target, source, can_wrap) => self.mul_instruction(target, source, *can_wrap)?,
             Div(target, source, can_wrap) => self.div_instruction(target, source, *can_wrap)?,
             Mod(target, source, can_wrap) => self.mod_instruction(target, source, *can_wrap)?,
+            And(target, source) => self.and_instruction(target, source),
+            Or(target, source) => self.or_instruction(target, source),
+            Xor(target, source) => self.xor_instruction(target, source),
+            Not(target) => self.not_instruction(target),
+            ShiftLeft(target, source) => self.shift_left(target, source),
+            ShiftRight(target, source) => self.shift_right_instruction(target, source),
 
         }
 
@@ -327,6 +333,131 @@ impl Core {
 
         self.set_value(target, value);
         Ok(())
+    }
+
+    fn and_instruction(&mut self, target: &Target, source: &Source) {
+        let rhs = self.get_value(source);
+        let lhs = self.get_value(target);
+
+        let value = lhs & rhs;
+
+        if value.is_negative() {
+            self.flags.negative = true;
+        } else {
+            self.flags.negative = false;
+        }
+
+        if value.is_zero() {
+            self.flags.zero = true;
+        } else {
+            self.flags.zero = false;
+        }
+
+        self.set_value(target, value);
+    }
+
+    fn or_instruction(&mut self, target: &Target, source: &Source) {
+        let rhs = self.get_value(source);
+        let lhs = self.get_value(target);
+
+        let value = lhs | rhs;
+
+        if value.is_negative() {
+            self.flags.negative = true;
+        } else {
+            self.flags.negative = false;
+        }
+
+        if value.is_zero() {
+            self.flags.zero = true;
+        } else {
+            self.flags.zero = false;
+        }
+
+        self.set_value(target, value);
+    }
+
+    fn xor_instruction(&mut self, target: &Target, source: &Source) {
+        let rhs = self.get_value(source);
+        let lhs = self.get_value(target);
+
+        let value = lhs ^ rhs;
+
+        if value.is_negative() {
+            self.flags.negative = true;
+        } else {
+            self.flags.negative = false;
+        }
+
+        if value.is_zero() {
+            self.flags.zero = true;
+        } else {
+            self.flags.zero = false;
+        }
+
+        self.set_value(target, value);
+    }
+
+    fn not_instruction(&mut self, target: &Target) {
+    let value = self.get_value(target);
+
+    let value = !value;
+
+    if value.is_negative() {
+        self.flags.negative = true;
+    } else {
+        self.flags.negative = false;
+    }
+
+    if value.is_zero() {
+        self.flags.zero = true;
+    } else {
+        self.flags.zero = false;
+    }
+
+    self.set_value(target, value);
+    }
+
+    fn shift_left(&mut self, target: &Target, source: &Source) {
+        let rhs = self.get_value(source);
+        let lhs = self.get_value(target);
+
+        let value = lhs << rhs;
+
+        if value.is_negative() {
+            self.flags.negative = true;
+        } else {
+            self.flags.negative = false;
+        }
+
+        if value.is_zero() {
+            self.flags.zero = true;
+        } else {
+            self.flags.zero = false;
+        }
+
+        self.set_value(target, value);
+    }
+
+    fn shift_right(&mut self, target: &Target, source: &Source) {
+        let rhs = self.get_value(source);
+        let lhs = self.get_value(target);
+
+        let value = lhs >> rhs;
+
+        if value.is_negative() {
+            self.flags.negative = true;
+        } else {
+            self.flags.negative = false;
+        }
+
+        if value.is_zero() {
+            self.flags.zero = true;
+        } else {
+            self.flags.zero = false;
+        }
+
+        self.set_value(target, value);
     }
 }
 

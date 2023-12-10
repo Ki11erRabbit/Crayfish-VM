@@ -570,3 +570,22 @@ impl std::ops::Shr<Value> for Value<'_> {
         }
     }
 }
+
+
+impl std::ops::Not for Value<'_> {
+    type Output = Value<'static>;
+
+    fn not(self) -> Self::Output {
+        match self {
+            Value::U8(val) => Value::U8(!val),
+            Value::I8(val) => Value::I8(!val),
+            Value::U16(val) => Value::U16(!val),
+            Value::I16(val) => Value::I16(!val),
+            Value::U32(val) => Value::U32(!val),
+            Value::I32(val) => Value::I32(!val),
+            Value::U64(val) => Value::U64(!val),
+            Value::I64(val) => Value::I64(!val),
+            _ => panic!("Cannot Bitwise Not Floats or other types")
+        }
+    }
+}
