@@ -59,6 +59,86 @@ impl Value<'_> {
         }
     }
 
+    pub fn increment_overflowing(self) -> (Value, bool) {
+        match self {
+            Value::U8(val) => {
+                let (value, overflow) = val.overflowing_add(1);
+                (Value::U8(value), overflow)
+            },
+            Value::I8(val) => {
+                let (value, overflow ) = val.overflowing_add(1);
+                (Value::I8(value), overflow)
+            },
+            Value::U16(val) => {
+                let (value, overflow ) = val.overflowing_add(1);
+                (Value::U16(value), overflow)
+            },
+            Value::I16(val) => {
+                let (value, overflow ) = val.overflowing_add(1);
+                (Value::I16(value), overflow)
+            },
+            Value::U32(val) => {
+                let (value, overflow ) = val.overflowing_add(1);
+                (Value::U32(value), overflow)
+            },,
+            Value::I32(val) => {
+                let (value, overflow ) = val.overflowing_add(1);
+                (Value::I32(value), overflow)
+            },
+            Value::U64(val) => {
+                let (value, overflow ) = val.overflowing_add(1);
+                (Value::U64(value), overflow)
+            },
+            Value::I64(val) => {
+                let (value, overflow ) = val.overflowing_add(1);
+                (Value::I64(value), overflow)
+            },
+            Value::F32(value) => (Value::F32(value + 1.0), false),
+            Value::F64(value) => (Value::F64(value + 1.0), false),
+            _ => panic!("Unable to add non-numeric values"),
+        }
+    }
+
+    pub fn decrement_overflowing(self) -> (Value, bool) {
+        match self {
+            Value::U8(val) => {
+                let (value, overflow) = val.overflowing_sub(1);
+                (Value::U8(value), overflow)
+            },
+            Value::I8(val) => {
+                let (value, overflow ) = val.overflowing_sub(1);
+                (Value::I8(value), overflow)
+            },
+            Value::U16(val) => {
+                let (value, overflow ) = val.overflowing_sub(1);
+                (Value::U16(value), overflow)
+            },
+            Value::I16(val) => {
+                let (value, overflow ) = val.overflowing_sub(1);
+                (Value::I16(value), overflow)
+            },
+            Value::U32(val) => {
+                let (value, overflow ) = val.overflowing_sub(1);
+                (Value::U32(value), overflow)
+            },,
+            Value::I32(val) => {
+                let (value, overflow ) = val.overflowing_sub(1);
+                (Value::I32(value), overflow)
+            },
+            Value::U64(val) => {
+                let (value, overflow ) = val.overflowing_sub(1);
+                (Value::U64(value), overflow)
+            },
+            Value::I64(val) => {
+                let (value, overflow ) = val.overflowing_sub(1);
+                (Value::I64(value), overflow)
+            },
+            Value::F32(value) => (Value::F32(value + 1.0), false),
+            Value::F64(value) => (Value::F64(value + 1.0), false),
+            _ => panic!("Unable to add non-numeric values"),
+        }
+    }
+
     pub fn overflowing_add(self, rhs: Value) -> (Value, bool) {
         match (self, rhs) {
             (Value::U8(lhs), Value::U8(rhs)) => {
@@ -94,12 +174,12 @@ impl Value<'_> {
                 (Value::I64(value), overflow)
             }
             (Value::F32(lhs), Value::F32(rhs)) => {
-                let (value, overflow) = lhs.overflowing_add(rhs);
-                (Value::F32(value), overflow)
+                let value = lhs + rhs;
+                (Value::F32(value), false)
             }
             (Value::F64(lhs), Value::F64(rhs)) => {
-                let (value, overflow) = lhs.overflowing_add(rhs);
-                (Value::F64(value), overflow)
+                let value = lhs + rhs;
+                (Value::F64(value), false)
             }
             _ => panic!("Cannot add values of different types"),
         }
