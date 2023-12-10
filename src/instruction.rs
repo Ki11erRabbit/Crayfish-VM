@@ -206,12 +206,12 @@ pub enum Instruction {
     /// This instruction divides a value from a register into a register.
     /// Overflow is considered an error but should never happen.
     /// Division by zero is considered an error.
-    Div(Target, Source),
+    Div(Target, Source, bool),
     /// Modulo instruction.
     /// This instruction calculates the modulo of a value from a register into a register.
     /// Overflow is considered an error but should never happen.
     /// Division by zero is considered an error.
-    Mod(Target, Source),
+    Mod(Target, Source, bool),
     /// And instruction.
     /// This instruction calculates the bitwise and of a value from a register into a register.
     And(Target, Source),
