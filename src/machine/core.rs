@@ -1,5 +1,5 @@
 use std::fmt::Display;
-use crate::instruction::{Instruction, RegisterType, Source, Target};
+use crate::instruction::{ComparisonType, Condition, Instruction, JumpTarget, RegisterType, Source, Target};
 use crate::machine::{Fault, InstructionResult, InstructionResultModifier, Register};
 use crate::stack_frame::{REGISTER_COUNT, StackFrame};
 use crate::value::{Value, ValueType};
@@ -458,6 +458,96 @@ impl Core {
         }
 
         self.set_value(target, value);
+    }
+
+    fn can_jump(&self, condition: &Condition) -> bool {
+        match condition {
+            Condition::Always => true,
+            Condition::Equal => self.flags.comparison == Comparison::Equal,
+            Condition::NotEqual => self.flags.comparison == Comparison::NotEqual,
+            Condition::LessThan => self.flags.comparison == Comparison::LessThan,
+            Condition::LessThanOrEqual => self.flags.comparison == Comparison::LessThanOrEqual,
+            Condition::GreaterThan => self.flags.comparison == Comparison::GreaterThan,
+            Condition::GreaterThanOrEqual => self.flags.comparison == Comparison::GreaterThanOrEqual,
+            Condition::Zero => self.flags.zero,
+            Condition::NotZero => !self.flags.zero,
+            Condition::Carry => self.flags.carry,
+            Condition::NotCarry => !self.flags.carry,
+            Condition::Negative => self.flags.negative,
+            Condition::NotNegative => !self.flags.negative,
+            Condition::InContinuation => todo!("InContinuation"),
+            Condition::NotInContinuation => todo!("NotInContinuation"),
+        }
+    }
+
+    fn goto_instruction(&mut self, stack_frame: &mut dyn StackFrame, jump_target: &JumpTarget, condition: &Condition) -> Result<InstructionResult,Fault> {
+        if self.can_jump(condition) {
+            match jump_target {
+                JumpTarget::Label(label) => {
+                    todo!("Label Goto");
+                },
+                JumpTarget::Relative(offset) => {
+                    stack_frame.set_program_counter(stack_frame.get_program_counter() + *offset);
+                },
+                JumpTarget::Absolute(address) => {
+                    stack_frame.set_program_counter(*address);
+                },
+            }
+        }
+        Ok(InstructionResult::Continue(InstructionResultModifier::None))
+    }
+
+    fn compare_instruction(&mut self, target: &Target, source: &Source, comparison_type: &ComparisonType) {
+        let rhs = self.get_value(source);
+        let lhs = self.get_value(target);
+
+        let comparison = match comparison_type {
+            ComparisonType::Equal => {
+                if lhs == rhs {
+                    Comparison::Equal
+                } else {
+                    Comparison::NotEqual
+                }
+            },
+            ComparisonType::NotEqual => {
+                if lhs != rhs {
+                    Comparison::NotEqual
+                } else {
+                    Comparison::Equal
+                }
+            },
+            ComparisonType::LessThan => {
+                if lhs < rhs {
+                    Comparison::LessThan
+                } else {
+                    Comparison::GreaterThanOrEqual
+                }
+            },
+            ComparisonType::LessThanOrEqual => {
+                if lhs <= rhs {
+                    Comparison::LessThanOrEqual
+                } else {
+                    Comparison::GreaterThan
+                }
+            },
+            ComparisonType::GreaterThan => {
+                if lhs > rhs {
+                    Comparison::GreaterThan
+                } else {
+                    Comparison::LessThanOrEqual
+                }
+            },
+            ComparisonType::GreaterThanOrEqual => {
+                if lhs >= rhs {
+                    Comparison::GreaterThanOrEqual
+                } else {
+                    Comparison::LessThan
+                }
+            },
+
+        };
+
+        self.flags.comparison = comparison;
     }
 }
 
