@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use crate::program::Function;
 use crate::value::object::Object;
 
@@ -487,6 +488,42 @@ impl std::ops::Shr<Value> for Value<'_> {
             (Value::U64(lhs), Value::U64(rhs)) => Value::U64(lhs >> rhs),
             (Value::I64(lhs), Value::I64(rhs)) => Value::I64(lhs >> rhs),
             _ => panic!("Cannot shift values of different types"),
+        }
+    }
+}
+
+impl PartialEq<Value> for Value<'_> {
+    fn eq(&self, other: &Value) -> bool {
+        match (self, other) {
+            (Value::U8(lhs), Value::U8(rhs)) => lhs == rhs,
+            (Value::I8(lhs), Value::I8(rhs)) => lhs == rhs,
+            (Value::U16(lhs), Value::U16(rhs)) => lhs == rhs,
+            (Value::I16(lhs), Value::I16(rhs)) => lhs == rhs,
+            (Value::U32(lhs), Value::U32(rhs)) => lhs == rhs,
+            (Value::I32(lhs), Value::I32(rhs)) => lhs == rhs,
+            (Value::U64(lhs), Value::U64(rhs)) => lhs == rhs,
+            (Value::I64(lhs), Value::I64(rhs)) => lhs == rhs,
+            (Value::F32(lhs), Value::F32(rhs)) => lhs == rhs,
+            (Value::F64(lhs), Value::F64(rhs)) => lhs == rhs,
+            _ => panic!("Cannot compare values of different types"),
+        }
+    }
+}
+
+impl PartialOrd<Value> for Value<'_> {
+    fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
+        match (self, other) {
+            (Value::U8(lhs), Value::U8(rhs)) => lhs.partial_cmp(rhs),
+            (Value::I8(lhs), Value::I8(rhs)) => lhs.partial_cmp(rhs),
+            (Value::U16(lhs), Value::U16(rhs)) => lhs.partial_cmp(rhs),
+            (Value::I16(lhs), Value::I16(rhs)) => lhs.partial_cmp(rhs),
+            (Value::U32(lhs), Value::U32(rhs)) => lhs.partial_cmp(rhs),
+            (Value::I32(lhs), Value::I32(rhs)) => lhs.partial_cmp(rhs),
+            (Value::U64(lhs), Value::U64(rhs)) => lhs.partial_cmp(rhs),
+            (Value::I64(lhs), Value::I64(rhs)) => lhs.partial_cmp(rhs),
+            (Value::F32(lhs), Value::F32(rhs)) => lhs.partial_cmp(rhs),
+            (Value::F64(lhs), Value::F64(rhs)) => lhs.partial_cmp(rhs),
+            _ => panic!("Cannot compare values of different types"),
         }
     }
 }
