@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::instruction::{CallTarget, ComparisonType, Condition, Instruction, JumpTarget, RegisterType, Source, Target};
 use crate::machine::{Fault, InstructionResult, Register};
 use crate::memory::Memory;
-use crate::program::Module;
+use crate::program::{Module, StringTablePath};
 use crate::stack_frame::{REGISTER_COUNT, StackFrame};
 use crate::stack_frame::delimited_continuation::ContinuationStore;
 use crate::stack_frame::frame::Frame;
@@ -61,7 +61,7 @@ impl Default for Core {
     }
 }
 
-trait CoreUtils<T> {
+pub trait CoreUtils<T> {
     fn get_value(&self, source: T) -> Value;
 }
 
@@ -117,7 +117,7 @@ pub struct Core {
 
 impl Core {
 
-    fn set_value(&mut self, target: &Target, value: Value) {
+    pub fn set_value(&mut self, target: &Target, value: Value) {
         match target {
             Target(index, _) => {
                 let register = &mut self.registers[*index];
@@ -129,7 +129,7 @@ impl Core {
     pub fn execute_instruction(&mut self,
                                stack_frame: &mut dyn StackFrame,
                                module: &Module,
-                               frames: &mut Vec<*const dyn StackFrame>,
+                               frames: &mut Vec<*mut dyn StackFrame>,
                                memory: Memory,
                                continuation_store: &mut ContinuationStore,
     ) -> Result<InstructionResult,Fault> {
@@ -157,8 +157,10 @@ impl Core {
             Return(ref condition) => return self.return_instruction(stack_frame, condition),
             Call(call_target, ref condition) => return self.call_instruction(stack_frame, module, memory, continuation_store, call_target, condition),
             StackDeref(ref target, ref stack_level, ref offset) => self.stack_dereference_instruction(target, stack_level, offset, stack_frame, frames)?,
+            StackStore(ref source, ref stack_level, ref offset) => self.stack_store_instruction(source, stack_level, offset, stack_frame, frames)?,
             Push(ref source) => self.push_instruction(stack_frame, source),
             Pop(ref target) => self.pop_instruction(stack_frame, target),
+            GetStringRef(ref target, ref path) => self.get_string_ref_instruction(target, path, &memory)?,
 
             x => unreachable!("Unimplemented instruction: {:?}", x),
         }
@@ -611,7 +613,7 @@ impl Core {
                                      stack_level: &Source,
                                      offset: &Source,
                                      stack_frame: &mut dyn StackFrame,
-                                     frames: &mut Vec<*const dyn StackFrame>) -> Result<(), Fault> {
+                                     frames: &mut Vec<*mut dyn StackFrame>) -> Result<(), Fault> {
 
         let stack_level = self.get_value(stack_level);
         let offset = self.get_value(offset);
@@ -632,6 +634,27 @@ impl Core {
         Ok(())
     }
 
+    fn stack_store_instruction(&mut self,
+                                stack_level: &Source,
+                                offset: &Source,
+                                value: &Source,
+                                stack_frame: &mut dyn StackFrame,
+                                frames: &mut Vec<*mut dyn StackFrame>) -> Result<(), Fault> {
+        let stack_level = self.get_value(stack_level);
+        let offset = self.get_value(offset);
+        let value = self.get_value(value);
+
+        if let Some(frame) = frames.iter_mut().rev().nth(stack_level.to_usize()) {
+            unsafe {frame.as_mut()}.expect("Frame is null").set_value(offset, value)
+        } else if stack_level.to_usize() == frames.len() {
+            stack_frame.set_value(offset, value)
+        } else {
+            return Err(Fault::StackFrameOutOfBounds);
+        }
+
+
+    }
+
     fn push_instruction(&mut self, stack_frame: &mut dyn StackFrame, source: &Source) {
         let value = self.get_value(source);
         stack_frame.push(value);
@@ -640,6 +663,21 @@ impl Core {
     fn pop_instruction(&mut self, stack_frame: &mut dyn StackFrame, target: &Target) {
         let value = stack_frame.pop(target.get_type().into());
         self.set_value(target, value);
+    }
+
+    fn create_list_instruction(&mut self, target: &Target, size: &Source, memory: &mut Memory) {
+
+    }
+
+    fn get_string_ref_instruction(&mut self, target: &Target, path: &StringTablePath, memory: &Memory) -> Result<(), Fault>{
+        let string = memory.get_string_ref_from_path(path)?;
+        match string {
+            Value::StringRef(index) => {
+                self.set_value(target, Value::U64(index));
+                Ok(())
+            },
+            _ => Err(Fault::InvalidReference),
+        }
     }
 }
 

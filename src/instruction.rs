@@ -1,4 +1,5 @@
 use crate::program::function::FunctionPath;
+use crate::program::StringTablePath;
 use crate::value::{Value, ValueType};
 
 /// Represents in what state a register should act as.
@@ -295,5 +296,10 @@ pub enum Instruction {
     /// The target can be a register or a memory address.
     CreateContinuation(Target),
     CreateObject(Target),
+    AccessObject(Target, Source, Source),
+    CreateList(Target, Source),
+    ListLength(Target, Source),
+    ListAccess(Target, Source, Source),
+    GetStringRef(Target, StringTablePath),
 
 }

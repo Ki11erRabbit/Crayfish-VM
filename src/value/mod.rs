@@ -7,6 +7,7 @@ pub mod object;
 
 
 
+#[derive(Clone, Copy, Debug)]
 pub enum ValueType {
     U8,
     I8,
@@ -19,8 +20,11 @@ pub enum ValueType {
     F32,
     F64,
     Object,
+    ObjectRef,
     String,
+    StringRef,
     Array,
+    ArrayRef,
     Function,
 }
 
@@ -38,8 +42,11 @@ impl ValueType {
             ValueType::F32 => 4,
             ValueType::F64 => 8,
             ValueType::Object => 8,
+            ValueType::ObjectRef => 8,
             ValueType::String => 8,
+            ValueType::StringRef => 8,
             ValueType::Array => 8,
+            ValueType::ArrayRef => 8,
             ValueType::Function => 8,
         }
     }
@@ -57,13 +64,36 @@ pub enum Value {
     I64(i64),
     F32(f32),
     F64(f64),
+    ObjectRef(u64),
     Object(*mut Object),
+    StringRef(u64),
     String(*const str),
+    ArrayRef(u64),
     Array(*mut [Value]),
     Function(Function),
 }
 
 impl Value {
+
+    pub fn new(typ: ValueType) -> Value {
+        match typ {
+            ValueType::U8 => Value::U8(0),
+            ValueType::I8 => Value::I8(0),
+            ValueType::U16 => Value::U16(0),
+            ValueType::I16 => Value::I16(0),
+            ValueType::U32 => Value::U32(0),
+            ValueType::I32 => Value::I32(0),
+            ValueType::U64 => Value::U64(0),
+            ValueType::I64 => Value::I64(0),
+            ValueType::F32 => Value::F32(0.0),
+            ValueType::F64 => Value::F64(0.0),
+            ValueType::ObjectRef => Value::ObjectRef(0),
+            ValueType::StringRef => Value::StringRef(0),
+            ValueType::ArrayRef => Value::ArrayRef(0),
+            ValueType::Function => todo!("Figure out how to make this work"),
+            _ => panic!("Cannot create value of type {:?}", typ),
+        }
+    }
     pub fn get_type(&self) -> ValueType {
         match self {
             Value::U8(_) => ValueType::U8,
@@ -77,8 +107,11 @@ impl Value {
             Value::F32(_) => ValueType::F32,
             Value::F64(_) => ValueType::F64,
             Value::Object(_) => ValueType::Object,
+            Value::ObjectRef(_) => ValueType::ObjectRef,
             Value::String(_) => ValueType::String,
+            Value::StringRef(_) => ValueType::StringRef,
             Value::Array(_) => ValueType::Array,
+            Value::ArrayRef(_) => ValueType::ArrayRef,
             Value::Function(_) => ValueType::Function,
         }
     }

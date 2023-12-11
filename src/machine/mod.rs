@@ -42,6 +42,9 @@ pub enum Fault {
     StackFrameOutOfBounds,
     InvalidStackIndex,
     StackOutOfBounds,
+    NullPointerReference,
+    InvalidReference,
+    IndexOutOfBounds,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -197,11 +200,10 @@ impl Default for Register {
 }
 
 
-pub fn call_main(core: &mut Core, module: Arc<Module>) -> Result<(), Fault> {
+pub fn call_main(core: &mut Core, module: Arc<Module>, memory: Memory) -> Result<(), Fault> {
     let main = module.get_function(&"main".into()).ok_or(Fault::FunctionNotFound("main".into()))?;
     let main_frame = Frame::new("main".into(), main.get_instructions());
     let mut frames = Vec::new();
-    let memory = Memory::new();
     let mut continuation_store = ContinuationStore::new();
 
     let result = match main {
@@ -230,7 +232,7 @@ pub fn call_main(core: &mut Core, module: Arc<Module>) -> Result<(), Fault> {
 pub fn call_bytecode_function(core: &mut Core,
                               mut stack_frame: impl StackFrame + 'static,
                               module: Arc<Module>,
-                              frames: &mut Vec<*const dyn StackFrame>,
+                              frames: &mut Vec<*mut dyn StackFrame>,
                               memory: Memory,
                               continuation_store: &mut ContinuationStore) -> Result<InstructionResult,Fault> {
     stack_frame.backup_registers(&core.registers);
@@ -254,7 +256,7 @@ pub fn call_bytecode_function(core: &mut Core,
             },
 
             InstructionResult::Call(function, new_stack_frame) => {
-                frames.push(&stack_frame as *const dyn StackFrame);
+                frames.push(&mut stack_frame as *mut dyn StackFrame);
                 match function {
                     Function::ByteCode(_) => {
                         let result = call_bytecode_function(core, new_stack_frame, module.clone(), frames, memory.clone(),continuation_store)?;
@@ -290,7 +292,7 @@ pub fn call_bytecode_function(core: &mut Core,
                 frames.pop();
             },
             InstructionResult::CallContinuation(continuation) => {
-                frames.push(&stack_frame as *const dyn StackFrame);
+                frames.push(&mut stack_frame as *mut dyn StackFrame);
 
                 let result = call_bytecode_function(core, continuation, module.clone(), frames, memory.clone(), continuation_store)?;
                 frames.pop();
@@ -315,12 +317,12 @@ pub fn call_native_function(native_function: NativeFunction,
                               core: &mut Core,
                               mut stack_frame: impl StackFrame + 'static,
                               module: Arc<Module>,
-                              frames: &mut Vec<*const dyn StackFrame>,
+                              frames: &mut Vec<*mut dyn StackFrame>,
                               memory: Memory,
                               continuation_store: &mut ContinuationStore) -> Result<InstructionResult,Fault> {
     stack_frame.backup_registers(&core.registers);
 
-    frames.push(&stack_frame as *const dyn StackFrame);
+    frames.push(&mut stack_frame as *mut dyn StackFrame);
 
 
     let result = native_function(core, module, frames, memory.clone(), continuation_store)?;
