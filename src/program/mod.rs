@@ -7,23 +7,11 @@ use crate::program::function::{Function, FunctionPath};
 pub mod function;
 
 
-#[derive(Clone,Eq)]
+#[derive(Clone,Eq, Hash, PartialEq)]
 pub struct StringTablePath {
     pub(crate) path: Box<[Box<str>]>,
 }
 
-impl Hash for StringTablePath {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let path = format!("{}",self);
-        path.hash(state);
-    }
-}
-
-impl PartialEq for StringTablePath {
-    fn eq(&self, other: &Self) -> bool {
-        format!("{}",self) == format!("{}",other)
-    }
-}
 impl Display for StringTablePath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut path = String::new();

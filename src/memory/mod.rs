@@ -15,6 +15,7 @@ pub enum MemoryObject {
     String(*const str),
     Object(*mut Object),
     List(*mut [Value]),
+    Pointer(*mut u8, usize, ValueType),
 }
 
 
@@ -60,6 +61,84 @@ impl Memory {
         }
     }
 
+    fn get_layout(size: usize, value_type: ValueType) -> std::alloc::Layout {
+        match value_type {
+            ValueType::U8 => std::alloc::Layout::from_size_align(size, 1).expect("Bad Layout"),
+            ValueType::U16 => std::alloc::Layout::from_size_align(size * 2, 2).expect("Bad Layout"),
+            ValueType::U32 => std::alloc::Layout::from_size_align(size * 4, 4).expect("Bad Layout"),
+            ValueType::U64 => std::alloc::Layout::from_size_align(size * 8, 8).expect("Bad Layout"),
+            ValueType::I8 => std::alloc::Layout::from_size_align(size, 1).expect("Bad Layout"),
+            ValueType::I16 => std::alloc::Layout::from_size_align(size * 2, 2).expect("Bad Layout"),
+            ValueType::I32 => std::alloc::Layout::from_size_align(size * 4, 4).expect("Bad Layout"),
+            ValueType::I64 => std::alloc::Layout::from_size_align(size * 8, 8).expect("Bad Layout"),
+            ValueType::F32 => std::alloc::Layout::from_size_align(size * 4, 4).expect("Bad Layout"),
+            ValueType::F64 => std::alloc::Layout::from_size_align(size * 8, 8).expect("Bad Layout"),
+            _ => panic!("Invalid value type"),
+        }
+    }
+
+    fn deallocate_helper(reference_table: &mut HashMap<u64, MemoryObject>, reference: u64) -> Result<(), Fault> {
+        let object = reference_table.remove(&reference);
+        if let Some(object) = object {
+            match object {
+                MemoryObject::Pointer(pointer, size, value_type) => {
+                    let layout = Self::get_layout(size, value_type);
+                    unsafe { std::alloc::dealloc(pointer, layout) };
+                }
+                MemoryObject::List(list) => {
+                    let list = unsafe { Box::from_raw(list) };
+
+                    for value in list.iter() {
+                        match value {
+                            Value::ArrayRef(index) => {
+                                Self::deallocate_helper(reference_table, *index)?;
+                            }
+                            Value::ObjectRef(index) => {
+                                Self::deallocate_helper(reference_table, *index)?;
+                            }
+                            Value::StringRef(index) => {
+                                Self::deallocate_helper(reference_table, *index)?;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                MemoryObject::StringTableRef(_, _) => {}
+                MemoryObject::String(pointer) => {
+                    unsafe { Box::from_raw(pointer as *mut str) };
+                }
+                MemoryObject::Object(object) => {
+                    unsafe { Box::from_raw(object) };
+                }
+                MemoryObject::Null => {}
+            }
+        }
+        Ok(())
+    }
+    pub fn deallocate(&mut self, reference: u64) -> Result<(), Fault> {
+        loop {
+            match self.reference_table.try_write() {
+                Ok(mut reference_table) => {
+                    Self::deallocate_helper(&mut reference_table, reference)?;
+                    return Ok(());
+                }
+                Err(TryLockError::WouldBlock)=> {}
+                Err(TryLockError::Poisoned(_)) => Err(Fault::MemoryError("Poisoned".to_string()))?,
+            }
+        }
+    }
+
+    pub fn allocate_pointer(&mut self, size: usize, value_type: ValueType) -> Result<Value, Fault> {
+        let layout = Self::get_layout(size, value_type);
+        let pointer = unsafe { std::alloc::alloc(layout) };
+        if pointer.is_null() {
+            Err(Fault::MemoryError("Failed to allocate memory".to_string()))?;
+        }
+        let pointer = MemoryObject::Pointer(pointer, size, value_type);
+        let index = self.allocate(pointer)?;
+        Ok(Value::U64(index))
+    }
+
     pub fn allocate_list(&mut self, length: usize, size: ValueType) -> Result<Value, Fault> {
         let mut list = Vec::with_capacity(length);
         for _ in 0..length {
@@ -87,7 +166,19 @@ impl Memory {
         }
     }
 
-    pub fn set_list(&mut self, reference: u64, index: u64, value: Value) -> Result<(), Fault> {
+    pub fn get_list_length(&self, reference: u64) -> Result<Value, Fault> {
+        let list = self.get(reference)?;
+        match list {
+            MemoryObject::List(list) => {
+                let list = unsafe { &mut *list };
+                Ok(Value::U64(list.len() as u64))
+            }
+            MemoryObject::Null => Err(Fault::NullPointerReference),
+            _ => Err(Fault::InvalidReference),
+        }
+    }
+
+    pub fn store_list(&mut self, reference: u64, index: u64, value: Value) -> Result<(), Fault> {
         let list = self.get(reference)?;
         match list {
             MemoryObject::List(list) => {

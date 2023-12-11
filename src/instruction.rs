@@ -300,6 +300,7 @@ pub enum Instruction {
     CreateList(Target, Source),
     ListLength(Target, Source),
     ListAccess(Target, Source, Source),
+    ListStore(Source, Source, Source),
     GetStringRef(Target, StringTablePath, u64),
 
 }

@@ -665,10 +665,6 @@ impl Core {
         self.set_value(target, value);
     }
 
-    fn create_list_instruction(&mut self, target: &Target, size: &Source, memory: &mut Memory) {
-
-    }
-
     fn get_string_ref_instruction(&mut self, target: &Target, path: &StringTablePath, table_index: u64, memory: &Memory) -> Result<(), Fault>{
         let string = memory.get_string_ref_from_path(path, table_index)?;
         match string {
@@ -678,6 +674,52 @@ impl Core {
             },
             _ => Err(Fault::InvalidReference),
         }
+    }
+
+    fn create_list_instruction(&mut self, target: &Target, size: &Source, memory: &mut Memory) -> Result<(),Fault>{
+        let size = self.get_value(size);
+
+        let list = memory.allocate_list(size.to_usize(), size.get_type())?;
+        self.set_value(target, list);
+        Ok(())
+    }
+
+    fn list_length_instruction(&mut self, target: &Target, list: &Source, memory: &Memory) -> Result<(),Fault>{
+        let list = self.get_value(list);
+
+        let length = match list {
+            Value::U64(index) => memory.get_list_length(index)?,
+            _ => return Err(Fault::InvalidReference),
+        };
+
+        self.set_value(target, length);
+        Ok(())
+    }
+
+    fn list_access_instruction(&mut self, target: &Target, list: &Source, index: &Source, memory: &Memory) -> Result<(),Fault>{
+        let list = self.get_value(list);
+        let index = self.get_value(index);
+
+        let value = match (list, index) {
+            (Value::U64(list), Value::U64(index)) => memory.access_list(list, index)?,
+            _ => return Err(Fault::InvalidReference),
+        };
+
+        self.set_value(target, value);
+        Ok(())
+    }
+
+    fn list_store_instruction(&mut self, list: &Source, index: &Source, value: &Source, memory: &mut Memory) -> Result<(),Fault>{
+        let list = self.get_value(list);
+        let index = self.get_value(index);
+        let value = self.get_value(value);
+
+        match (list, index) {
+            (Value::U64(list), Value::U64(index)) => memory.store_list(list, index, value)?,
+            _ => return Err(Fault::InvalidReference),
+        };
+
+        Ok(())
     }
 }
 
