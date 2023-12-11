@@ -21,13 +21,13 @@ pub enum Fault {
     MemoryError(String),
 }
 
-
+#[derive(Debug, Clone, Copy)]
 pub struct Register {
     pub value: [u8; 8],
 }
 
 impl Register {
-    fn get_value(&self, size: ValueType) -> Value {
+    fn get_value<'a>(&self, size: ValueType) -> Value<'a> {
         match size {
             ValueType::U8 => Value::U8(self.value[0]),
             ValueType::I8 => Value::I8(i8::from_le_bytes([self.value[0]])),
@@ -56,7 +56,7 @@ impl Register {
                 self.value[7] = 0;
             },
             Value::I8(value) => {
-                self.value[0] = u8::from_le_bytes(value.to_le_bytes())
+                self.value[0] = u8::from_le_bytes(value.to_le_bytes());
                 self.value[1] = 0;
                 self.value[2] = 0;
                 self.value[3] = 0;

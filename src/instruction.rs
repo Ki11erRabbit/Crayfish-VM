@@ -38,7 +38,7 @@ impl Into<ValueType> for RegisterType {
 /// usize represents the index of the register.
 /// RegisterType represents the state the register should act as.
 #[derive(Debug, Clone)]
-pub struct Target(usize, RegisterType);
+pub struct Target(pub usize, pub RegisterType);
 
 
 
@@ -68,8 +68,8 @@ pub enum Immediate {
     F64(f64),
 }
 
-impl Into<Value> for Immediate {
-    fn into(self) -> Value {
+impl<'a> Into<Value<'a>> for Immediate {
+    fn into(self) -> Value<'a> {
         match self {
             Immediate::U8(value) => Value::U8(value),
             Immediate::U16(value) => Value::U16(value),
@@ -81,6 +81,23 @@ impl Into<Value> for Immediate {
             Immediate::I64(value) => Value::I64(value),
             Immediate::F32(value) => Value::F32(value),
             Immediate::F64(value) => Value::F64(value),
+        }
+    }
+}
+
+impl<'a> Into<Value<'a>> for &Immediate {
+    fn into(self) -> Value<'a> {
+        match self {
+            Immediate::U8(value) => Value::U8(*value),
+            Immediate::U16(value) => Value::U16(*value),
+            Immediate::U32(value) => Value::U32(*value),
+            Immediate::U64(value) => Value::U64(*value),
+            Immediate::I8(value) => Value::I8(*value),
+            Immediate::I16(value) => Value::I16(*value),
+            Immediate::I32(value) => Value::I32(*value),
+            Immediate::I64(value) => Value::I64(*value),
+            Immediate::F32(value) => Value::F32(*value),
+            Immediate::F64(value) => Value::F64(*value),
         }
     }
 }
@@ -155,6 +172,7 @@ pub enum ComparisonType {
 }
 
 
+#[derive(Debug, Clone)]
 pub enum CallTarget {
     Label(FunctionPath),
     Vtable(Source),
@@ -162,6 +180,8 @@ pub enum CallTarget {
     Closure(Source),
 }
 
+
+#[derive(Debug, Clone)]
 pub enum Instruction {
     /// A halt instruction.
     /// This instruction stops the program.

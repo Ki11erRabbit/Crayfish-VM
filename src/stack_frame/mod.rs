@@ -5,12 +5,13 @@ use std::sync::Arc;
 use crate::instruction::Instruction;
 use crate::machine::Register;
 use crate::stack_frame::delimited_continuation::DelimitedContinuation;
-use crate::value::Value;
+use crate::value::{Value, ValueType};
 
 pub const REGISTER_COUNT: usize = 32;
 
 
 
+#[derive(Clone)]
 pub struct ReturnAddress {
     program_counter: usize,
     function_name: Box<str>,
@@ -24,7 +25,7 @@ pub struct ReturnAddress {
 
 pub trait StackFrame {
     fn push(&mut self, value: Value);
-    fn pop(&mut self, size: u8) -> Value;
+    fn pop(&mut self, size: ValueType, return_value: &mut Value);
 
     fn backup_registers(&mut self, registers: &[Register; REGISTER_COUNT]);
 

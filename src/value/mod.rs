@@ -23,6 +23,8 @@ pub enum ValueType {
     Array,
     Function,
 }
+
+#[derive(Clone)]
 pub enum Value<'a> {
     U8(u8),
     I8(i8),
@@ -34,7 +36,7 @@ pub enum Value<'a> {
     I64(i64),
     F32(f32),
     F64(f64),
-    Object(Object<'a>),
+    Object(&'a Object<'a>),
     String(Box<str>),
     Array(Box<[Value<'a>]>),
     Function(Function),
@@ -60,7 +62,7 @@ impl Value<'_> {
         }
     }
 
-    pub fn increment_overflowing(self) -> (Value, bool) {
+    pub fn increment_overflowing<'a>(self) -> (Value<'a>, bool) {
         match self {
             Value::U8(val) => {
                 let (value, overflow) = val.overflowing_add(1);
@@ -81,7 +83,7 @@ impl Value<'_> {
             Value::U32(val) => {
                 let (value, overflow ) = val.overflowing_add(1);
                 (Value::U32(value), overflow)
-            },,
+            },
             Value::I32(val) => {
                 let (value, overflow ) = val.overflowing_add(1);
                 (Value::I32(value), overflow)
@@ -100,7 +102,7 @@ impl Value<'_> {
         }
     }
 
-    pub fn decrement_overflowing(self) -> (Value, bool) {
+    pub fn decrement_overflowing<'a>(self) -> (Value<'a>, bool) {
         match self {
             Value::U8(val) => {
                 let (value, overflow) = val.overflowing_sub(1);
@@ -121,7 +123,7 @@ impl Value<'_> {
             Value::U32(val) => {
                 let (value, overflow ) = val.overflowing_sub(1);
                 (Value::U32(value), overflow)
-            },,
+            },
             Value::I32(val) => {
                 let (value, overflow ) = val.overflowing_sub(1);
                 (Value::I32(value), overflow)
@@ -221,12 +223,12 @@ impl Value<'_> {
                 (Value::I64(value), overflow)
             }
             (Value::F32(lhs), Value::F32(rhs)) => {
-                let (value, overflow) = lhs.overflowing_sub(rhs);
-                (Value::F32(value), overflow)
+                let value = lhs - rhs;
+                (Value::F32(value), false)
             }
             (Value::F64(lhs), Value::F64(rhs)) => {
-                let (value, overflow) = lhs.overflowing_sub(rhs);
-                (Value::F64(value), overflow)
+                let value = lhs - rhs;
+                (Value::F64(value), false)
             }
             _ => panic!("Cannot subtract values of different types"),
         }
@@ -268,12 +270,12 @@ impl Value<'_> {
                 (Value::I64(value), overflow)
             }
             (Value::F32(lhs), Value::F32(rhs)) => {
-                let (value, overflow) = lhs.overflowing_mul(rhs);
-                (Value::F32(value), overflow)
+                let value = lhs * rhs;
+                (Value::F32(value), false)
             }
             (Value::F64(lhs), Value::F64(rhs)) => {
-                let (value, overflow) = lhs.overflowing_mul(rhs);
-                (Value::F64(value), overflow)
+                let value = lhs * rhs;
+                (Value::F64(value), false)
             }
             _ => panic!("Cannot multiply values of different types"),
         }
@@ -349,16 +351,16 @@ impl Value<'_> {
                 if rhs == 0.0 {
                     None
                 } else {
-                    let (value, overflow) = lhs.overflowing_div(rhs);
-                    Some((Value::F32(value), overflow))
+                    let value = lhs / rhs;
+                    Some((Value::F32(value), false))
                 }
             }
             (Value::F64(lhs), Value::F64(rhs)) => {
                 if rhs == 0.0 {
                     None
                 } else {
-                    let (value, overflow) = lhs.overflowing_div(rhs);
-                    Some((Value::F64(value), overflow))
+                    let value = lhs / rhs;
+                    Some((Value::F64(value), false))
                 }
             }
             _ => panic!("Cannot divide values of different types"),
@@ -538,9 +540,9 @@ impl std::ops::BitXor for Value<'_> {
     }
 }
 
-impl std::ops::Shl<Value> for Value<'_> {
-    type Output = Value<'static>;
-    fn shl(self, rhs: Value) -> Self::Output {
+impl<'a> std::ops::Shl<Value<'a>> for Value<'_> {
+    type Output = Value<'a>;
+    fn shl(self, rhs: Value<'a>) -> Self::Output {
         match (self, rhs) {
             (Value::U8(lhs), Value::U8(rhs)) => Value::U8(lhs << rhs),
             (Value::I8(lhs), Value::I8(rhs)) => Value::I8(lhs << rhs),
@@ -555,8 +557,8 @@ impl std::ops::Shl<Value> for Value<'_> {
     }
 }
 
-impl std::ops::Shr<Value> for Value<'_> {
-    type Output = Value<'static>;
+impl<'a> std::ops::Shr<Value<'a>> for Value<'a> {
+    type Output = Value<'a>;
     fn shr(self, rhs: Value) -> Self::Output {
         match (self, rhs) {
             (Value::U8(lhs), Value::U8(rhs)) => Value::U8(lhs >> rhs),
@@ -568,42 +570,6 @@ impl std::ops::Shr<Value> for Value<'_> {
             (Value::U64(lhs), Value::U64(rhs)) => Value::U64(lhs >> rhs),
             (Value::I64(lhs), Value::I64(rhs)) => Value::I64(lhs >> rhs),
             _ => panic!("Cannot shift values of different types"),
-        }
-    }
-}
-
-impl PartialEq<Value> for Value<'_> {
-    fn eq(&self, other: &Value) -> bool {
-        match (self, other) {
-            (Value::U8(lhs), Value::U8(rhs)) => lhs == rhs,
-            (Value::I8(lhs), Value::I8(rhs)) => lhs == rhs,
-            (Value::U16(lhs), Value::U16(rhs)) => lhs == rhs,
-            (Value::I16(lhs), Value::I16(rhs)) => lhs == rhs,
-            (Value::U32(lhs), Value::U32(rhs)) => lhs == rhs,
-            (Value::I32(lhs), Value::I32(rhs)) => lhs == rhs,
-            (Value::U64(lhs), Value::U64(rhs)) => lhs == rhs,
-            (Value::I64(lhs), Value::I64(rhs)) => lhs == rhs,
-            (Value::F32(lhs), Value::F32(rhs)) => lhs == rhs,
-            (Value::F64(lhs), Value::F64(rhs)) => lhs == rhs,
-            _ => panic!("Cannot compare values of different types"),
-        }
-    }
-}
-
-impl PartialOrd<Value> for Value<'_> {
-    fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
-        match (self, other) {
-            (Value::U8(lhs), Value::U8(rhs)) => lhs.partial_cmp(rhs),
-            (Value::I8(lhs), Value::I8(rhs)) => lhs.partial_cmp(rhs),
-            (Value::U16(lhs), Value::U16(rhs)) => lhs.partial_cmp(rhs),
-            (Value::I16(lhs), Value::I16(rhs)) => lhs.partial_cmp(rhs),
-            (Value::U32(lhs), Value::U32(rhs)) => lhs.partial_cmp(rhs),
-            (Value::I32(lhs), Value::I32(rhs)) => lhs.partial_cmp(rhs),
-            (Value::U64(lhs), Value::U64(rhs)) => lhs.partial_cmp(rhs),
-            (Value::I64(lhs), Value::I64(rhs)) => lhs.partial_cmp(rhs),
-            (Value::F32(lhs), Value::F32(rhs)) => lhs.partial_cmp(rhs),
-            (Value::F64(lhs), Value::F64(rhs)) => lhs.partial_cmp(rhs),
-            _ => panic!("Cannot compare values of different types"),
         }
     }
 }
@@ -623,5 +589,119 @@ impl std::ops::Not for Value<'_> {
             Value::I64(val) => Value::I64(!val),
             _ => panic!("Cannot Bitwise Not Floats or other types")
         }
+    }
+}
+
+impl<'a> PartialEq<Value<'a>> for Value<'a> {
+    fn eq(&self, other: &Value<'a>) -> bool {
+        match (self, other) {
+            (Value::U8(lhs), Value::U8(rhs)) => lhs == rhs,
+            (Value::I8(lhs), Value::I8(rhs)) => lhs == rhs,
+            (Value::U16(lhs), Value::U16(rhs)) => lhs == rhs,
+            (Value::I16(lhs), Value::I16(rhs)) => lhs == rhs,
+            (Value::U32(lhs), Value::U32(rhs)) => lhs == rhs,
+            (Value::I32(lhs), Value::I32(rhs)) => lhs == rhs,
+            (Value::U64(lhs), Value::U64(rhs)) => lhs == rhs,
+            (Value::I64(lhs), Value::I64(rhs)) => lhs == rhs,
+            (Value::F32(lhs), Value::F32(rhs)) => lhs == rhs,
+            (Value::F64(lhs), Value::F64(rhs)) => lhs == rhs,
+            _ => panic!("Cannot compare values of different types"),
+        }
+    }
+}
+
+impl<'a> PartialOrd<Value<'a>> for Value<'a> {
+    fn partial_cmp(&self, other: &Value<'a>) -> Option<Ordering> {
+        match (self, other) {
+            (Value::U8(lhs), Value::U8(rhs)) => lhs.partial_cmp(rhs),
+            (Value::I8(lhs), Value::I8(rhs)) => lhs.partial_cmp(rhs),
+            (Value::U16(lhs), Value::U16(rhs)) => lhs.partial_cmp(rhs),
+            (Value::I16(lhs), Value::I16(rhs)) => lhs.partial_cmp(rhs),
+            (Value::U32(lhs), Value::U32(rhs)) => lhs.partial_cmp(rhs),
+            (Value::I32(lhs), Value::I32(rhs)) => lhs.partial_cmp(rhs),
+            (Value::U64(lhs), Value::U64(rhs)) => lhs.partial_cmp(rhs),
+            (Value::I64(lhs), Value::I64(rhs)) => lhs.partial_cmp(rhs),
+            (Value::F32(lhs), Value::F32(rhs)) => lhs.partial_cmp(rhs),
+            (Value::F64(lhs), Value::F64(rhs)) => lhs.partial_cmp(rhs),
+            _ => panic!("Cannot compare values of different types"),
+        }
+    }
+}
+
+impl<'a> Into<Box<[u8]>> for Value<'a> {
+    fn into(self) -> Box<[u8]> {
+        match self {
+            Value::U8(val) => Box::new([val]),
+            Value::I8(val) => Box::new([val as u8]),
+            Value::U16(val) => Box::new(val.to_le_bytes()),
+            Value::I16(val) => Box::new(val.to_le_bytes()),
+            Value::U32(val) => Box::new(val.to_le_bytes()),
+            Value::I32(val) => Box::new(val.to_le_bytes()),
+            Value::U64(val) => Box::new(val.to_le_bytes()),
+            Value::I64(val) => Box::new(val.to_le_bytes()),
+            Value::F32(val) => Box::new(val.to_le_bytes()),
+            Value::F64(val) => Box::new(val.to_le_bytes()),
+            _ => panic!("Cannot convert non-numeric values to bytes"),
+        }
+    }
+}
+
+impl<'a> Into<Value<'a>> for u8 {
+    fn into(self) -> Value<'a> {
+        Value::U8(self)
+    }
+}
+
+impl<'a> Into<Value<'a>> for i8 {
+    fn into(self) -> Value<'a> {
+        Value::I8(self)
+    }
+}
+
+impl<'a> Into<Value<'a>> for u16 {
+    fn into(self) -> Value<'a> {
+        Value::U16(self)
+    }
+}
+
+impl<'a> Into<Value<'a>> for i16 {
+    fn into(self) -> Value<'a> {
+        Value::I16(self)
+    }
+}
+
+impl<'a> Into<Value<'a>> for u32 {
+    fn into(self) -> Value<'a> {
+        Value::U32(self)
+    }
+}
+
+impl<'a> Into<Value<'a>> for i32 {
+    fn into(self) -> Value<'a> {
+        Value::I32(self)
+    }
+}
+
+impl<'a> Into<Value<'a>> for u64 {
+    fn into(self) -> Value<'a> {
+        Value::U64(self)
+    }
+}
+
+impl<'a> Into<Value<'a>> for i64 {
+    fn into(self) -> Value<'a> {
+        Value::I64(self)
+    }
+}
+
+impl<'a> Into<Value<'a>> for f32 {
+    fn into(self) -> Value<'a> {
+        Value::F32(self)
+    }
+}
+
+impl<'a> Into<Value<'a>> for f64 {
+    fn into(self) -> Value<'a> {
+        Value::F64(self)
     }
 }

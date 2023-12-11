@@ -57,11 +57,11 @@ impl Default for Core {
 }
 
 trait CoreUtils<T> {
-    fn get_value(&self, source: T) -> Value;
+    fn get_value<'a>(&self, source: T) -> Value<'a>;
 }
 
 impl CoreUtils<&Source> for Core {
-    fn get_value(&self, source: &Source) -> Value {
+    fn get_value<'a>(&self, source: &Source) -> Value<'a> {
         match source {
             Source::Register(index, register_type) => {
                 let register = &self.registers[*index];
@@ -84,7 +84,7 @@ impl CoreUtils<&Source> for Core {
 }
 
 impl CoreUtils<&Target> for Core {
-    fn get_value(&self, source: &Target) -> Value {
+    fn get_value<'a>(&self, source: &Target) -> Value<'a> {
         match source {
             Target(index, register_type) => {
                 let register = &self.registers[*index];
@@ -121,7 +121,9 @@ impl Core {
         }
     }
 
-    pub fn execute_instruction(&mut self, stack_frame: &mut dyn StackFrame) -> Result<InstructionResult,Fault> {
+    pub fn execute_instruction(&mut self,
+                               stack_frame: &mut dyn StackFrame,
+    ) -> Result<InstructionResult,Fault> {
         use Instruction::*;
         match &stack_frame.get_instruction() {
             Halt => return Ok(InstructionResult::Stop),
@@ -136,9 +138,12 @@ impl Core {
             Or(target, source) => self.or_instruction(target, source),
             Xor(target, source) => self.xor_instruction(target, source),
             Not(target) => self.not_instruction(target),
-            ShiftLeft(target, source) => self.shift_left(target, source),
+            ShiftLeft(target, source) => self.shift_left_instruction(target, source),
             ShiftRight(target, source) => self.shift_right_instruction(target, source),
+            Goto(jump_target, condition) => return self.goto_instruction(stack_frame, jump_target, condition),
+            Compare(target, source, comparison_type) => self.compare_instruction(target, source, comparison_type),
 
+            x => unreachable!("Unimplemented instruction: {:?}", x),
         }
 
         stack_frame.increment_program_counter();
@@ -399,26 +404,26 @@ impl Core {
     }
 
     fn not_instruction(&mut self, target: &Target) {
-    let value = self.get_value(target);
+        let value = self.get_value(target);
 
-    let value = !value;
+        let value = !value;
 
-    if value.is_negative() {
-        self.flags.negative = true;
-    } else {
-        self.flags.negative = false;
+        if value.is_negative() {
+            self.flags.negative = true;
+        } else {
+            self.flags.negative = false;
+        }
+
+        if value.is_zero() {
+            self.flags.zero = true;
+        } else {
+            self.flags.zero = false;
+        }
+
+        self.set_value(target, value);
     }
 
-    if value.is_zero() {
-        self.flags.zero = true;
-    } else {
-        self.flags.zero = false;
-    }
-
-    self.set_value(target, value);
-    }
-
-    fn shift_left(&mut self, target: &Target, source: &Source) {
+    fn shift_left_instruction(&mut self, target: &Target, source: &Source) {
         let rhs = self.get_value(source);
         let lhs = self.get_value(target);
 
@@ -439,7 +444,7 @@ impl Core {
         self.set_value(target, value);
     }
 
-    fn shift_right(&mut self, target: &Target, source: &Source) {
+    fn shift_right_instruction(&mut self, target: &Target, source: &Source) {
         let rhs = self.get_value(source);
         let lhs = self.get_value(target);
 
@@ -487,7 +492,7 @@ impl Core {
                     todo!("Label Goto");
                 },
                 JumpTarget::Relative(offset) => {
-                    stack_frame.set_program_counter(stack_frame.get_program_counter() + *offset);
+                    stack_frame.set_program_counter((stack_frame.get_program_counter() as isize + *offset) as usize);
                 },
                 JumpTarget::Absolute(address) => {
                     stack_frame.set_program_counter(*address);
@@ -544,9 +549,7 @@ impl Core {
                     Comparison::LessThan
                 }
             },
-
         };
-
         self.flags.comparison = comparison;
     }
 }
