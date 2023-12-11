@@ -129,7 +129,8 @@ impl Core {
     pub fn execute_instruction(&mut self,
                                stack_frame: &mut dyn StackFrame,
                                module: &Module,
-                               memory1: Memory,
+                               frames: &mut Vec<*const dyn StackFrame>,
+                               memory: Memory,
                                continuation_store: &mut ContinuationStore,
     ) -> Result<InstructionResult,Fault> {
 
@@ -154,7 +155,10 @@ impl Core {
             Goto(ref jump_target, ref condition) => return self.goto_instruction(stack_frame, jump_target, condition),
             Compare(ref target, ref source, ref comparison_type) => self.compare_instruction(target, source, comparison_type),
             Return(ref condition) => return self.return_instruction(stack_frame, condition),
-            Call(call_target, ref condition) => return self.call_instruction(stack_frame, module, memory1, continuation_store, call_target, condition),
+            Call(call_target, ref condition) => return self.call_instruction(stack_frame, module, memory, continuation_store, call_target, condition),
+            StackDeref(ref target, ref stack_level, ref offset) => self.stack_dereference_instruction(target, stack_level, offset, stack_frame, frames)?,
+            Push(ref source) => self.push_instruction(stack_frame, source),
+            Pop(ref target) => self.pop_instruction(stack_frame, target),
 
             x => unreachable!("Unimplemented instruction: {:?}", x),
         }
@@ -600,6 +604,42 @@ impl Core {
             }
         }
         Ok(InstructionResult::Continue)
+    }
+
+    fn stack_dereference_instruction(&mut self,
+                                     target: &Target,
+                                     stack_level: &Source,
+                                     offset: &Source,
+                                     stack_frame: &mut dyn StackFrame,
+                                     frames: &mut Vec<*const dyn StackFrame>) -> Result<(), Fault> {
+
+        let stack_level = self.get_value(stack_level);
+        let offset = self.get_value(offset);
+
+
+        let frame = if let Some(frame) = frames.iter().rev().nth(stack_level.to_usize()) {
+            *frame
+        } else if stack_level.to_usize() == frames.len() {
+            stack_frame as *const dyn StackFrame
+        } else {
+            return Err(Fault::StackFrameOutOfBounds);
+        };
+
+        let value = unsafe {frame.as_ref()}.expect("Frame is null").get_value(offset, target.get_type().into());
+
+        self.set_value(target, value);
+
+        Ok(())
+    }
+
+    fn push_instruction(&mut self, stack_frame: &mut dyn StackFrame, source: &Source) {
+        let value = self.get_value(source);
+        stack_frame.push(value);
+    }
+
+    fn pop_instruction(&mut self, stack_frame: &mut dyn StackFrame, target: &Target) {
+        let value = stack_frame.pop(target.get_type().into());
+        self.set_value(target, value);
     }
 }
 

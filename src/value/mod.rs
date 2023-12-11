@@ -24,6 +24,27 @@ pub enum ValueType {
     Function,
 }
 
+impl ValueType {
+    pub fn get_size(&self) -> usize {
+        match self {
+            ValueType::U8 => 1,
+            ValueType::I8 => 1,
+            ValueType::U16 => 2,
+            ValueType::I16 => 2,
+            ValueType::U32 => 4,
+            ValueType::I32 => 4,
+            ValueType::U64 => 8,
+            ValueType::I64 => 8,
+            ValueType::F32 => 4,
+            ValueType::F64 => 8,
+            ValueType::Object => 8,
+            ValueType::String => 8,
+            ValueType::Array => 8,
+            ValueType::Function => 8,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub enum Value {
     U8(u8),
@@ -59,6 +80,20 @@ impl Value {
             Value::String(_) => ValueType::String,
             Value::Array(_) => ValueType::Array,
             Value::Function(_) => ValueType::Function,
+        }
+    }
+
+    pub fn to_usize(&self) -> usize {
+        match self {
+            Value::U8(value) => *value as usize,
+            Value::I8(value) => *value as usize,
+            Value::U16(value) => *value as usize,
+            Value::I16(value) => *value as usize,
+            Value::U32(value) => *value as usize,
+            Value::I32(value) => *value as usize,
+            Value::U64(value) => *value as usize,
+            Value::I64(value) => *value as usize,
+            _ => panic!("Cannot convert non-integer value to usize"),
         }
     }
 

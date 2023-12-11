@@ -37,6 +37,11 @@ pub enum Fault {
     InvalidString,
     InvalidOperation(String),
     MemoryError(String),
+    InvalidStackLevel,
+    InvalidStackOffset,
+    StackFrameOutOfBounds,
+    InvalidStackIndex,
+    StackOutOfBounds,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -231,7 +236,7 @@ pub fn call_bytecode_function(core: &mut Core,
     stack_frame.backup_registers(&core.registers);
 
     loop {
-        let result = core.execute_instruction(&mut stack_frame, &module, memory.clone(), continuation_store)?;
+        let result = core.execute_instruction(&mut stack_frame, &module, frames, memory.clone(), continuation_store)?;
         match result {
             InstructionResult::Continue => {},
             InstructionResult::Stop => {

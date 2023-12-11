@@ -3,7 +3,7 @@ pub mod delimited_continuation;
 
 use std::sync::Arc;
 use crate::instruction::Instruction;
-use crate::machine::Register;
+use crate::machine::{Fault, Register};
 use crate::program::function::FunctionPath;
 use crate::stack_frame::delimited_continuation::DelimitedContinuation;
 use crate::value::{Value, ValueType};
@@ -26,7 +26,10 @@ pub struct ReturnAddress {
 
 pub trait StackFrame {
     fn push(&mut self, value: Value);
-    fn pop(&mut self, size: ValueType, return_value: &mut Value);
+    fn pop(&mut self, size: ValueType) -> Value;
+
+    fn get_value(&self, offset: Value, size: ValueType) -> Value;
+    fn set_value(&mut self, offset: Value, value: Value) -> Result<(),Fault>;
 
     fn backup_registers(&mut self, registers: &[Register; REGISTER_COUNT]);
 
@@ -60,6 +63,7 @@ pub trait StackFrame {
     fn is_continuation(&self) -> bool {
         false
     }
+
 
 
 

@@ -3,7 +3,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use smallvec::SmallVec;
 use crate::instruction::Instruction;
-use crate::machine::Register;
+use crate::machine::{Fault, Register};
 use crate::program::function::FunctionPath;
 use crate::stack_frame::{REGISTER_COUNT, ReturnAddress, StackFrame};
 use crate::stack_frame::delimited_continuation::DelimitedContinuation;
@@ -55,60 +55,197 @@ impl StackFrame for Frame {
         self.stack[self.stack_pointer..self.stack_pointer + bytes.len()].copy_from_slice(&bytes);
     }
 
-    fn pop(&mut self, size: ValueType, mut return_value: &mut Value) {
+    fn pop(&mut self, size: ValueType ) -> Value {
         match size {
             ValueType::U8 => {
                 let value = self.stack[self.stack_pointer];
                 self.stack_pointer += 1;
-                *return_value = value.into()
+                value.into()
             },
             ValueType::U16 => {
                 let value = u16::from_le_bytes([self.stack[self.stack_pointer], self.stack[self.stack_pointer + 1]]);
                 self.stack_pointer += 2;
-                *return_value = value.into()
+                value.into()
             },
             ValueType::U32 => {
                 let value = u32::from_le_bytes([self.stack[self.stack_pointer], self.stack[self.stack_pointer + 1], self.stack[self.stack_pointer + 2], self.stack[self.stack_pointer + 3]]);
                 self.stack_pointer += 4;
-                *return_value = value.into()
+                value.into()
             },
             ValueType::U64 => {
                 let value = u64::from_le_bytes([self.stack[self.stack_pointer], self.stack[self.stack_pointer + 1], self.stack[self.stack_pointer + 2], self.stack[self.stack_pointer + 3], self.stack[self.stack_pointer + 4], self.stack[self.stack_pointer + 5], self.stack[self.stack_pointer + 6], self.stack[self.stack_pointer + 7]]);
                 self.stack_pointer += 8;
-                *return_value = value.into()
+                value.into()
             },
             ValueType::I8 => {
                 let value = i8::from_le_bytes([self.stack[self.stack_pointer]]);
                 self.stack_pointer += 1;
-                *return_value = value.into()
+                value.into()
             },
             ValueType::I16 => {
                 let value = i16::from_le_bytes([self.stack[self.stack_pointer], self.stack[self.stack_pointer + 1]]);
                 self.stack_pointer += 2;
-                *return_value = value.into()
+                value.into()
             },
             ValueType::I32 => {
                 let value = i32::from_le_bytes([self.stack[self.stack_pointer], self.stack[self.stack_pointer + 1], self.stack[self.stack_pointer + 2], self.stack[self.stack_pointer + 3]]);
                 self.stack_pointer += 4;
-                *return_value = value.into()
+                value.into()
             },
             ValueType::I64 => {
                 let value = i64::from_le_bytes([self.stack[self.stack_pointer], self.stack[self.stack_pointer + 1], self.stack[self.stack_pointer + 2], self.stack[self.stack_pointer + 3], self.stack[self.stack_pointer + 4], self.stack[self.stack_pointer + 5], self.stack[self.stack_pointer + 6], self.stack[self.stack_pointer + 7]]);
                 self.stack_pointer += 8;
-                *return_value = value.into()
+                value.into()
             },
             ValueType::F32 => {
                 let value = f32::from_le_bytes([self.stack[self.stack_pointer], self.stack[self.stack_pointer + 1], self.stack[self.stack_pointer + 2], self.stack[self.stack_pointer + 3]]);
                 self.stack_pointer += 4;
-                *return_value = value.into()
+                value.into()
             },
             ValueType::F64 => {
                 let value = f64::from_le_bytes([self.stack[self.stack_pointer], self.stack[self.stack_pointer + 1], self.stack[self.stack_pointer + 2], self.stack[self.stack_pointer + 3], self.stack[self.stack_pointer + 4], self.stack[self.stack_pointer + 5], self.stack[self.stack_pointer + 6], self.stack[self.stack_pointer + 7]]);
                 self.stack_pointer += 8;
-                *return_value = value.into()
+                value.into()
             },
             _ => panic!("Invalid register size"),
         }
+    }
+
+    fn get_value(&self, offset: Value, size: ValueType) -> Value {
+
+        let offset = offset.to_usize();
+
+        match size {
+            ValueType::U8 => {
+                let value = self.stack[self.stack_pointer + offset];
+                value.into()
+            },
+            ValueType::U16 => {
+                let value = u16::from_le_bytes([self.stack[self.stack_pointer + offset], self.stack[self.stack_pointer + offset + 1]]);
+                value.into()
+            },
+            ValueType::U32 => {
+                let value = u32::from_le_bytes([self.stack[self.stack_pointer + offset], self.stack[self.stack_pointer + offset + 1], self.stack[self.stack_pointer + offset + 2], self.stack[self.stack_pointer + offset + 3]]);
+                value.into()
+            },
+            ValueType::U64 => {
+                let value = u64::from_le_bytes([self.stack[self.stack_pointer + offset], self.stack[self.stack_pointer + offset + 1], self.stack[self.stack_pointer + offset + 2], self.stack[self.stack_pointer + offset + 3], self.stack[self.stack_pointer + offset + 4], self.stack[self.stack_pointer + offset + 5], self.stack[self.stack_pointer + offset + 6], self.stack[self.stack_pointer + offset + 7]]);
+                value.into()
+            },
+            ValueType::I8 => {
+                let value = i8::from_le_bytes([self.stack[self.stack_pointer + offset]]);
+                value.into()
+            },
+            ValueType::I16 => {
+                let value = i16::from_le_bytes([self.stack[self.stack_pointer + offset], self.stack[self.stack_pointer + offset + 1]]);
+                value.into()
+            },
+            ValueType::I32 => {
+                let value = i32::from_le_bytes([self.stack[self.stack_pointer + offset], self.stack[self.stack_pointer + offset + 1], self.stack[self.stack_pointer + offset + 2], self.stack[self.stack_pointer + offset + 3]]);
+                value.into()
+            },
+            ValueType::I64 => {
+                let value = i64::from_le_bytes([self.stack[self.stack_pointer + offset], self.stack[self.stack_pointer + offset + 1], self.stack[self.stack_pointer + offset + 2], self.stack[self.stack_pointer + offset + 3], self.stack[self.stack_pointer + offset + 4], self.stack[self.stack_pointer + offset + 5], self.stack[self.stack_pointer + offset + 6], self.stack[self.stack_pointer + offset + 7]]);
+                value.into()
+            },
+            ValueType::F32 => {
+                let value = f32::from_le_bytes([self.stack[self.stack_pointer + offset], self.stack[self.stack_pointer + offset + 1], self.stack[self.stack_pointer + offset + 2], self.stack[self.stack_pointer + offset + 3]]);
+                value.into()
+            },
+            ValueType::F64 => {
+                let value = f64::from_le_bytes([self.stack[self.stack_pointer + offset], self.stack[self.stack_pointer + offset + 1], self.stack[self.stack_pointer + offset + 2], self.stack[self.stack_pointer + offset + 3], self.stack[self.stack_pointer + offset + 4], self.stack[self.stack_pointer + offset + 5], self.stack[self.stack_pointer + offset + 6], self.stack[self.stack_pointer + offset + 7]]);
+                value.into()
+            },
+            _ => panic!("(Stack) Invalid value type"),
+        }
+    }
+
+    fn set_value(&mut self, offset: Value, value: Value) -> Result<(),Fault> {
+        let offset = offset.to_usize();
+
+        if offset >= self.stack_pointer {
+            return Err(Fault::StackOutOfBounds);
+        }
+
+        if self.stack_pointer - offset + value.get_type().get_size() > self.stack.len() {
+            self.stack.resize(self.stack_pointer - offset + value.get_type().get_size(), 0);
+        }
+
+        match value {
+            Value::U8(value) => {
+                self.stack[self.stack_pointer - offset] = value;
+            },
+            Value::U16(value) => {
+                let bytes = value.to_le_bytes();
+                self.stack[self.stack_pointer - offset] = bytes[0];
+                self.stack[self.stack_pointer - offset + 1] = bytes[1];
+            },
+            Value::U32(value) => {
+                let bytes = value.to_le_bytes();
+                self.stack[self.stack_pointer - offset] = bytes[0];
+                self.stack[self.stack_pointer - offset + 1] = bytes[1];
+                self.stack[self.stack_pointer - offset + 2] = bytes[2];
+                self.stack[self.stack_pointer - offset + 3] = bytes[3];
+            },
+            Value::U64(value) => {
+                let bytes = value.to_le_bytes();
+                self.stack[self.stack_pointer - offset] = bytes[0];
+                self.stack[self.stack_pointer - offset + 1] = bytes[1];
+                self.stack[self.stack_pointer - offset + 2] = bytes[2];
+                self.stack[self.stack_pointer - offset + 3] = bytes[3];
+                self.stack[self.stack_pointer - offset + 4] = bytes[4];
+                self.stack[self.stack_pointer - offset + 5] = bytes[5];
+                self.stack[self.stack_pointer - offset + 6] = bytes[6];
+                self.stack[self.stack_pointer - offset + 7] = bytes[7];
+            },
+            Value::I8(value) => {
+                let bytes = value.to_le_bytes();
+                self.stack[self.stack_pointer - offset] = bytes[0];
+            },
+            Value::I16(value) => {
+                let bytes = value.to_le_bytes();
+                self.stack[self.stack_pointer - offset] = bytes[0];
+                self.stack[self.stack_pointer - offset + 1] = bytes[1];
+            },
+            Value::I32(value) => {
+                let bytes = value.to_le_bytes();
+                self.stack[self.stack_pointer - offset] = bytes[0];
+                self.stack[self.stack_pointer - offset + 1] = bytes[1];
+                self.stack[self.stack_pointer - offset + 2] = bytes[2];
+                self.stack[self.stack_pointer - offset + 3] = bytes[3];
+            },
+            Value::I64(value) => {
+                let bytes = value.to_le_bytes();
+                self.stack[self.stack_pointer - offset] = bytes[0];
+                self.stack[self.stack_pointer - offset + 1] = bytes[1];
+                self.stack[self.stack_pointer - offset + 2] = bytes[2];
+                self.stack[self.stack_pointer - offset + 3] = bytes[3];
+                self.stack[self.stack_pointer - offset + 4] = bytes[4];
+                self.stack[self.stack_pointer - offset + 5] = bytes[5];
+                self.stack[self.stack_pointer - offset + 6] = bytes[6];
+                self.stack[self.stack_pointer - offset + 7] = bytes[7];
+            },
+            Value::F32(value) => {
+                let bytes = value.to_le_bytes();
+                self.stack[self.stack_pointer - offset] = bytes[0];
+                self.stack[self.stack_pointer - offset + 1] = bytes[1];
+                self.stack[self.stack_pointer - offset + 2] = bytes[2];
+                self.stack[self.stack_pointer - offset + 3] = bytes[3];
+            },
+            Value::F64(value) => {
+                let bytes = value.to_le_bytes();
+                self.stack[self.stack_pointer - offset] = bytes[0];
+                self.stack[self.stack_pointer - offset + 1] = bytes[1];
+                self.stack[self.stack_pointer - offset + 2] = bytes[2];
+                self.stack[self.stack_pointer - offset + 3] = bytes[3];
+                self.stack[self.stack_pointer - offset + 4] = bytes[4];
+                self.stack[self.stack_pointer - offset + 5] = bytes[5];
+                self.stack[self.stack_pointer - offset + 6] = bytes[6];
+                self.stack[self.stack_pointer - offset + 7] = bytes[7];
+            },
+            _ => panic!("(Stack) Invalid value type"),
+        }
+        Ok(())
     }
 
     fn backup_registers(&mut self, registers: &[Register; REGISTER_COUNT]) {

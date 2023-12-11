@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 use crate::instruction::Instruction;
-use crate::machine::Register;
+use crate::machine::{Fault, Register};
 use crate::program::function::FunctionPath;
 use crate::stack_frame::{REGISTER_COUNT, ReturnAddress, StackFrame};
 use crate::value::{Value, ValueType};
@@ -69,9 +69,17 @@ impl StackFrame for DelimitedContinuation {
         self.stack_frame.borrow_mut().push(value)
     }
 
-    fn pop(&mut self, size: ValueType, return_value: &mut Value) {
+    fn pop(&mut self, size: ValueType) -> Value {
         let mut stack_frame = self.stack_frame.borrow_mut();
-        stack_frame.pop(size, return_value);
+        stack_frame.pop(size)
+    }
+
+    fn get_value(&self, offset: Value, size: ValueType) -> Value {
+        self.stack_frame.borrow().get_value(offset, size)
+    }
+
+    fn set_value(&mut self, offset: Value, value: Value) -> Result<(), Fault> {
+        self.stack_frame.borrow_mut().set_value(offset, value)
     }
 
     fn backup_registers(&mut self, registers: &[Register; REGISTER_COUNT]) {

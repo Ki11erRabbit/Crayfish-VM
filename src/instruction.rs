@@ -2,7 +2,7 @@ use crate::program::function::FunctionPath;
 use crate::value::{Value, ValueType};
 
 /// Represents in what state a register should act as.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum RegisterType {
     U8,
     U16,
@@ -40,6 +40,11 @@ impl Into<ValueType> for RegisterType {
 #[derive(Debug, Clone)]
 pub struct Target(pub usize, pub RegisterType);
 
+impl Target {
+    pub fn get_type(&self) -> RegisterType {
+        self.1
+    }
+}
 
 
 #[derive(Debug, Clone)]
@@ -205,6 +210,12 @@ pub enum Instruction {
     /// The source is the index of the value on the stack.
     /// The last source is the index of the stack frame.
     StackDeref(Target, Source, Source),
+    /// Stack reference instruction.
+    /// This instruction stores a into the stack.
+    /// The first source is the stack level
+    /// The second source is the offset from the stack pointer
+    /// The third source value to store
+    StackStore(Source, Source, Source),
     /// Add instruction.
     /// This instruction adds a value from a register into a register.
     /// Overflow is considered an error unless first bool is set to true.
