@@ -74,7 +74,7 @@ fn print_string_main() -> Arc<[Instruction]> {
 
 fn main() {
     let mut module = Module::default();
-
+    //TODO: make sure that we also add the string table index to the instruction
     module.add_function(&"main".into(), Function::ByteCode(dp_fib()));
     module.add_function(&"main".into(), Function::ByteCode(hello_world_main()));
     module.add_function(&"hello_world".into(), Function::Native(hello_world));
