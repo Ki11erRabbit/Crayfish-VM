@@ -3,8 +3,37 @@ use std::rc::Rc;
 use std::sync::Arc;
 use crate::instruction::Instruction;
 use crate::machine::Register;
+use crate::program::function::FunctionPath;
 use crate::stack_frame::{REGISTER_COUNT, ReturnAddress, StackFrame};
 use crate::value::{Value, ValueType};
+
+
+
+pub struct ContinuationStore {
+    continuations: Vec<DelimitedContinuation>,
+}
+
+impl ContinuationStore {
+    pub fn new() -> Self {
+        ContinuationStore {
+            continuations: Vec::new()
+        }
+    }
+
+    pub fn store(&mut self, continuation: DelimitedContinuation) {
+        self.continuations.push(continuation);
+    }
+
+    pub fn get(&mut self, index: usize) -> Option<DelimitedContinuation> {
+        self.continuations.get(index).map(|c| c.clone())
+    }
+
+    pub fn get_last_index(&mut self) -> u64 {
+        self.continuations.len() as u64 - 1
+    }
+
+}
+
 
 #[derive(Clone)]
 pub struct DelimitedContinuation {
@@ -69,7 +98,7 @@ impl StackFrame for DelimitedContinuation {
         self.stack_frame.borrow().create_return_address()
     }
 
-    fn get_function_name(&self) -> Box<str> {
+    fn get_function_name(&self) -> FunctionPath {
         self.stack_frame.borrow().get_function_name()
     }
 

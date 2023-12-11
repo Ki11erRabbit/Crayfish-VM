@@ -4,6 +4,7 @@ pub mod delimited_continuation;
 use std::sync::Arc;
 use crate::instruction::Instruction;
 use crate::machine::Register;
+use crate::program::function::FunctionPath;
 use crate::stack_frame::delimited_continuation::DelimitedContinuation;
 use crate::value::{Value, ValueType};
 
@@ -14,7 +15,7 @@ pub const REGISTER_COUNT: usize = 32;
 #[derive(Clone)]
 pub struct ReturnAddress {
     program_counter: usize,
-    function_name: Box<str>,
+    function_name: FunctionPath,
 }
 
 
@@ -38,7 +39,7 @@ pub trait StackFrame {
 
     fn create_return_address(&self) -> ReturnAddress;
 
-    fn get_function_name(&self) -> Box<str>;
+    fn get_function_name(&self) -> FunctionPath;
 
     fn set_function_name(&mut self, name: &str);
 

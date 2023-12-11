@@ -4,6 +4,7 @@ use std::sync::Arc;
 use smallvec::SmallVec;
 use crate::instruction::Instruction;
 use crate::machine::Register;
+use crate::program::function::FunctionPath;
 use crate::stack_frame::{REGISTER_COUNT, ReturnAddress, StackFrame};
 use crate::stack_frame::delimited_continuation::DelimitedContinuation;
 use crate::value::{Value, ValueType};
@@ -11,7 +12,7 @@ use crate::value::{Value, ValueType};
 
 #[derive(Clone)]
 pub struct FrameInfo {
-    function_name: Box<str>,
+    function_name: FunctionPath,
     instructions: Arc<[Instruction]>,
     program_counter: usize,
 }
@@ -27,6 +28,23 @@ pub struct Frame {
     gc_backup: Option<[Register; REGISTER_COUNT]>,
 }
 
+impl Frame {
+    pub fn new(function_name: FunctionPath, instructions: Arc<[Instruction]>) -> Self {
+        Frame {
+            frame_info: FrameInfo {
+                function_name: function_name.into(),
+                instructions,
+                program_counter: 0,
+            },
+            return_address: None,
+            stack: SmallVec::new(),
+            stack_pointer: 0,
+            call_backup: None,
+            gc_backup: None,
+        }
+    }
+}
+
 
 impl StackFrame for Frame {
     fn push(&mut self, value: Value) {
@@ -37,7 +55,7 @@ impl StackFrame for Frame {
         self.stack[self.stack_pointer..self.stack_pointer + bytes.len()].copy_from_slice(&bytes);
     }
 
-    fn pop(&mut self, size: ValueType, mut return_value: &mut Value){
+    fn pop(&mut self, size: ValueType, mut return_value: &mut Value) {
         match size {
             ValueType::U8 => {
                 let value = self.stack[self.stack_pointer];
@@ -94,13 +112,13 @@ impl StackFrame for Frame {
     }
 
     fn backup_registers(&mut self, registers: &[Register; REGISTER_COUNT]) {
-        self.call_backup = Some((*registers));
+        self.call_backup = Some(*registers);
 
     }
 
     fn restore_registers(&mut self, registers: &mut [Register; REGISTER_COUNT]) {
         if let Some(call_backup) = &self.call_backup {
-            registers.copy_from_slice(call_backup);
+            registers[8..].copy_from_slice(call_backup);
         }
     }
 
@@ -126,7 +144,7 @@ impl StackFrame for Frame {
         }
     }
 
-    fn get_function_name(&self) -> Box<str> {
+    fn get_function_name(&self) -> FunctionPath {
         self.frame_info.function_name.clone()
     }
 

@@ -1,7 +1,10 @@
 use std::fmt::Display;
 use crate::instruction::{ComparisonType, Condition, Instruction, JumpTarget, RegisterType, Source, Target};
-use crate::machine::{Fault, InstructionResult, InstructionResultModifier, Register};
+use crate::machine::{Fault, InstructionResult, Register};
+use crate::memory::Memory;
+use crate::program::Module;
 use crate::stack_frame::{REGISTER_COUNT, StackFrame};
+use crate::stack_frame::delimited_continuation::ContinuationStore;
 use crate::value::{Value, ValueType};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -123,6 +126,9 @@ impl Core {
 
     pub fn execute_instruction(&mut self,
                                stack_frame: &mut dyn StackFrame,
+                               module: &Module,
+                               memory1: Memory,
+                               continuation_store: &mut ContinuationStore,
     ) -> Result<InstructionResult,Fault> {
         use Instruction::*;
         match &stack_frame.get_instruction() {
@@ -148,7 +154,7 @@ impl Core {
 
         stack_frame.increment_program_counter();
 
-        Ok(InstructionResult::Continue(InstructionResultModifier::None))
+        Ok(InstructionResult::Continue)
     }
 
 
@@ -499,7 +505,7 @@ impl Core {
                 },
             }
         }
-        Ok(InstructionResult::Continue(InstructionResultModifier::None))
+        Ok(InstructionResult::Continue)
     }
 
     fn compare_instruction(&mut self, target: &Target, source: &Source, comparison_type: &ComparisonType) {

@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use crate::program::Function;
+use crate::program::function::Function;
 use crate::value::object::Object;
 
 pub mod object;

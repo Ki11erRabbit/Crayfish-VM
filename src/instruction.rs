@@ -1,4 +1,4 @@
-use crate::program::FunctionPath;
+use crate::program::function::FunctionPath;
 use crate::value::{Value, ValueType};
 
 /// Represents in what state a register should act as.
