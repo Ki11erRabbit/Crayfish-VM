@@ -22,7 +22,7 @@ pub enum MemoryObject {
 #[derive(Debug, Clone)]
 pub struct Memory {
     reference_table: Arc<RwLock<HashMap<u64, MemoryObject>>>,
-    string_lookup_table: Arc<RwLock<HashMap<StringTablePath, u64>>>,
+    string_lookup_table: Arc<RwLock<HashMap<(StringTablePath, u64), u64>>>,
     rng: rand::rngs::ThreadRng,
 }
 
@@ -122,13 +122,13 @@ impl Memory {
         }
     }
 
-    pub fn allocate_string_ref(&mut self, path: &StringTablePath, index: u64) -> Result<Value, Fault> {
-        let string = MemoryObject::StringTableRef(path.clone(), index);
+    pub fn allocate_string_ref(&mut self, path: &StringTablePath, table_index: u64) -> Result<Value, Fault> {
+        let string = MemoryObject::StringTableRef(path.clone(), table_index);
         let index = self.allocate(string)?;
         loop {
             match self.string_lookup_table.try_write() {
                 Ok(mut string_lookup_table) => {
-                    string_lookup_table.insert(path.clone(), index);
+                    string_lookup_table.insert((path.clone(), table_index), index);
 
                     return Ok(Value::StringRef(index));
                 }
@@ -138,11 +138,11 @@ impl Memory {
         }
     }
 
-    pub fn get_string_ref_from_path(&self, path: &StringTablePath) -> Result<Value, Fault> {
+    pub fn get_string_ref_from_path(&self, path: &StringTablePath, table_index: u64) -> Result<Value, Fault> {
         loop {
             match self.string_lookup_table.try_read() {
                 Ok(string_lookup_table) => {
-                    if let Some(index) = string_lookup_table.get(&path) {
+                    if let Some(index) = string_lookup_table.get(&(path.clone(), table_index)) {
                         return Ok(Value::StringRef(*index));
                     } else {
                         return Err(Fault::InvalidReference);

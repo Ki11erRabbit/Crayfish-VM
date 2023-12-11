@@ -9,7 +9,7 @@ pub mod function;
 
 #[derive(Clone,Eq)]
 pub struct StringTablePath {
-    pub(crate) path: Box<[Box<str>]>
+    pub(crate) path: Box<[Box<str>]>,
 }
 
 impl Hash for StringTablePath {
@@ -43,14 +43,30 @@ impl Debug for StringTablePath {
 
 impl Into<StringTablePath> for &str {
     fn into(self) -> StringTablePath {
-        StringTablePath {
-            path: self.split("::").map(|s| s.into()).collect::<Vec<Box<str>>>().into_boxed_slice()
+        let split = self.split("::").map(|s| s.into()).collect::<Vec<Box<str>>>();
+        for part in split.iter() {
+            if part.is_empty() {
+                return StringTablePath {
+                    path: Box::new([]),
+                }
+            }
         }
+        StringTablePath {
+            path: split.into_boxed_slice()
+        }
+
     }
 }
 
 impl Into<StringTablePath> for Vec<Box<str>> {
     fn into(self) -> StringTablePath {
+        for part in self.iter() {
+            if part.is_empty() {
+                return StringTablePath {
+                    path: Box::new([]),
+                }
+            }
+        }
         StringTablePath {
             path: self.into_boxed_slice()
         }
@@ -97,7 +113,7 @@ impl Module {
 
     pub fn get_string(&self, path: &StringTablePath, index: u64) -> Option<&str> {
         let mut module = self;
-        for part in path.path.iter().take(path.path.len() - 1) {
+        for part in path.path.iter().take(path.path.len().saturating_sub( 1)) {
             module = module.sub_modules.get(part)?;
         }
         module.string_table.get(index as usize).map(|s| s.as_ref())
@@ -105,7 +121,7 @@ impl Module {
 
     pub fn add_string(&mut self, path: &StringTablePath, string: &str) -> u64 {
         let mut module = self;
-        for part in path.path.iter().take(path.path.len() - 1) {
+        for part in path.path.iter().take(path.path.len().saturating_sub(1)) {
             module = module.sub_modules.entry(part.clone()).or_insert_with(|| Module::default());
         }
         let index = module.string_table.len() as u64;

@@ -160,7 +160,7 @@ impl Core {
             StackStore(ref source, ref stack_level, ref offset) => self.stack_store_instruction(source, stack_level, offset, stack_frame, frames)?,
             Push(ref source) => self.push_instruction(stack_frame, source),
             Pop(ref target) => self.pop_instruction(stack_frame, target),
-            GetStringRef(ref target, ref path) => self.get_string_ref_instruction(target, path, &memory)?,
+            GetStringRef(ref target, ref path, index) => self.get_string_ref_instruction(target, path, index, &memory)?,
 
             x => unreachable!("Unimplemented instruction: {:?}", x),
         }
@@ -669,8 +669,8 @@ impl Core {
 
     }
 
-    fn get_string_ref_instruction(&mut self, target: &Target, path: &StringTablePath, memory: &Memory) -> Result<(), Fault>{
-        let string = memory.get_string_ref_from_path(path)?;
+    fn get_string_ref_instruction(&mut self, target: &Target, path: &StringTablePath, table_index: u64, memory: &Memory) -> Result<(), Fault>{
+        let string = memory.get_string_ref_from_path(path, table_index)?;
         match string {
             Value::StringRef(index) => {
                 self.set_value(target, Value::U64(index));
