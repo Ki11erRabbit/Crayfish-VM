@@ -130,8 +130,11 @@ impl Core {
                                memory1: Memory,
                                continuation_store: &mut ContinuationStore,
     ) -> Result<InstructionResult,Fault> {
+
+        let instruction = stack_frame.get_instruction();
+
         use Instruction::*;
-        match &stack_frame.get_instruction() {
+        match &instruction {
             Halt => return Ok(InstructionResult::Stop),
             NoOp => (),
             Load(target, source) => self.load_instruction(target, source),
@@ -148,6 +151,7 @@ impl Core {
             ShiftRight(target, source) => self.shift_right_instruction(target, source),
             Goto(jump_target, condition) => return self.goto_instruction(stack_frame, jump_target, condition),
             Compare(target, source, comparison_type) => self.compare_instruction(target, source, comparison_type),
+            Return(condition) => return self.return_instruction(stack_frame, condition),
 
             x => unreachable!("Unimplemented instruction: {:?}", x),
         }
@@ -471,7 +475,7 @@ impl Core {
         self.set_value(target, value);
     }
 
-    fn can_jump(&self, condition: &Condition) -> bool {
+    fn can_jump(&self, condition: &Condition, stack_frame: &dyn StackFrame) -> bool {
         match condition {
             Condition::Always => true,
             Condition::Equal => self.flags.comparison == Comparison::Equal,
@@ -486,13 +490,13 @@ impl Core {
             Condition::NotCarry => !self.flags.carry,
             Condition::Negative => self.flags.negative,
             Condition::NotNegative => !self.flags.negative,
-            Condition::InContinuation => todo!("InContinuation"),
-            Condition::NotInContinuation => todo!("NotInContinuation"),
+            Condition::InContinuation => stack_frame.is_continuation(),
+            Condition::NotInContinuation => !stack_frame.is_continuation(),
         }
     }
 
     fn goto_instruction(&mut self, stack_frame: &mut dyn StackFrame, jump_target: &JumpTarget, condition: &Condition) -> Result<InstructionResult,Fault> {
-        if self.can_jump(condition) {
+        if self.can_jump(condition, stack_frame) {
             match jump_target {
                 JumpTarget::Label(label) => {
                     todo!("Label Goto");
@@ -557,6 +561,14 @@ impl Core {
             },
         };
         self.flags.comparison = comparison;
+    }
+
+    fn return_instruction(&mut self, stack_frame: &mut dyn StackFrame, condition: &Condition) -> Result<InstructionResult, Fault> {
+        if self.can_jump(condition, stack_frame) {
+            return Ok(InstructionResult::Return);
+        }
+        stack_frame.increment_program_counter();
+        Ok(InstructionResult::Continue)
     }
 }
 

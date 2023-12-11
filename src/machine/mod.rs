@@ -195,7 +195,7 @@ pub fn call_main(core: &mut Core, module: &Module) -> Result<(), Fault> {
     let main = module.get_function(&"main".into()).ok_or(Fault::FunctionNotFound("main".to_string()))?;
     let main_frame = Frame::new("main".into(), main.get_instructions());
     let mut frames = Vec::new();
-    let mut memory = Memory::new();
+    let memory = Memory::new();
     let mut continuation_store = ContinuationStore::new();
 
     let result = match main {

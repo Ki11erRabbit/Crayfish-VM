@@ -118,7 +118,7 @@ impl StackFrame for Frame {
 
     fn restore_registers(&mut self, registers: &mut [Register; REGISTER_COUNT]) {
         if let Some(call_backup) = &self.call_backup {
-            registers[8..].copy_from_slice(call_backup);
+            registers[8..].copy_from_slice(&call_backup[8..]);
         }
     }
 
