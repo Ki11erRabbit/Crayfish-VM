@@ -11,7 +11,7 @@ use crate::stack_frame::frame::Frame;
 use crate::stack_frame::StackFrame;
 
 
-pub type NativeFunction = fn(&mut Core, &Module, &mut Vec<*const dyn StackFrame>, Memory, &mut ContinuationStore) -> Result<InstructionResult,Fault>;
+pub type NativeFunction = fn(&mut Core, Arc<Module>, &mut Vec<*const dyn StackFrame>, Memory, &mut ContinuationStore) -> Result<InstructionResult,Fault>;
 
 #[derive(Clone)]
 pub struct FunctionPath {

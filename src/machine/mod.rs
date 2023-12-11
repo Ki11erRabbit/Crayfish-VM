@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::sync::Arc;
 use crate::machine::core::Core;
 use crate::memory::Memory;
 use crate::program::function::{Function, FunctionPath, NativeFunction};
@@ -191,7 +192,7 @@ impl Default for Register {
 }
 
 
-pub fn call_main(core: &mut Core, module: &Module) -> Result<(), Fault> {
+pub fn call_main(core: &mut Core, module: Arc<Module>) -> Result<(), Fault> {
     let main = module.get_function(&"main".into()).ok_or(Fault::FunctionNotFound("main".to_string()))?;
     let main_frame = Frame::new("main".into(), main.get_instructions());
     let mut frames = Vec::new();
@@ -223,14 +224,14 @@ pub fn call_main(core: &mut Core, module: &Module) -> Result<(), Fault> {
 
 pub fn call_bytecode_function(core: &mut Core,
                               mut stack_frame: impl StackFrame + 'static,
-                              module: &Module,
+                              module: Arc<Module>,
                               frames: &mut Vec<*const dyn StackFrame>,
                               memory: Memory,
                               continuation_store: &mut ContinuationStore) -> Result<InstructionResult,Fault> {
     stack_frame.backup_registers(&core.registers);
 
     loop {
-        let result = core.execute_instruction(&mut stack_frame, module, memory.clone(), continuation_store)?;
+        let result = core.execute_instruction(&mut stack_frame, &module, memory.clone(), continuation_store)?;
         match result {
             InstructionResult::Continue => {},
             InstructionResult::Stop => {
@@ -252,7 +253,7 @@ pub fn call_bytecode_function(core: &mut Core,
                 frames.push(&stack_frame as *const dyn StackFrame);
                 match function {
                     Function::ByteCode(_) => {
-                        let result = call_bytecode_function(core, new_stack_frame, module, frames, memory.clone(),continuation_store)?;
+                        let result = call_bytecode_function(core, new_stack_frame, module.clone(), frames, memory.clone(),continuation_store)?;
                         match result {
                             InstructionResult::Continue => {},
                             InstructionResult::Stop => {
@@ -267,7 +268,7 @@ pub fn call_bytecode_function(core: &mut Core,
                         }
                     },
                     Function::Native(native) => {
-                        let result = call_native_function(native, core, new_stack_frame, module, frames, memory.clone(),continuation_store)?;
+                        let result = call_native_function(native, core, new_stack_frame, module.clone(), frames, memory.clone(),continuation_store)?;
                         match result {
                             InstructionResult::Continue => {}
                             InstructionResult::Stop => {
@@ -287,7 +288,7 @@ pub fn call_bytecode_function(core: &mut Core,
             InstructionResult::CallContinuation(continuation) => {
                 frames.push(&stack_frame as *const dyn StackFrame);
 
-                let result = call_bytecode_function(core, continuation, module, frames, memory.clone(), continuation_store)?;
+                let result = call_bytecode_function(core, continuation, module.clone(), frames, memory.clone(), continuation_store)?;
                 frames.pop();
                 match result {
                     InstructionResult::Continue => {},
@@ -309,7 +310,7 @@ pub fn call_bytecode_function(core: &mut Core,
 pub fn call_native_function(native_function: NativeFunction,
                               core: &mut Core,
                               mut stack_frame: impl StackFrame + 'static,
-                              module: &Module,
+                              module: Arc<Module>,
                               frames: &mut Vec<*const dyn StackFrame>,
                               memory: Memory,
                               continuation_store: &mut ContinuationStore) -> Result<InstructionResult,Fault> {
