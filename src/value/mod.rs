@@ -25,7 +25,7 @@ pub enum ValueType {
 }
 
 #[derive(Clone)]
-pub enum Value<'a> {
+pub enum Value {
     U8(u8),
     I8(i8),
     U16(u16),
@@ -36,13 +36,13 @@ pub enum Value<'a> {
     I64(i64),
     F32(f32),
     F64(f64),
-    Object(&'a Object<'a>),
-    String(Box<str>),
-    Array(Box<[Value<'a>]>),
+    Object(*mut Object),
+    String(*const str),
+    Array(*mut [Value]),
     Function(Function),
 }
 
-impl Value<'_> {
+impl Value {
     pub fn get_type(&self) -> ValueType {
         match self {
             Value::U8(_) => ValueType::U8,
@@ -62,7 +62,7 @@ impl Value<'_> {
         }
     }
 
-    pub fn increment_overflowing<'a>(self) -> (Value<'a>, bool) {
+    pub fn increment_overflowing(self) -> (Value, bool) {
         match self {
             Value::U8(val) => {
                 let (value, overflow) = val.overflowing_add(1);
@@ -102,7 +102,7 @@ impl Value<'_> {
         }
     }
 
-    pub fn decrement_overflowing<'a>(self) -> (Value<'a>, bool) {
+    pub fn decrement_overflowing(self) -> (Value, bool) {
         match self {
             Value::U8(val) => {
                 let (value, overflow) = val.overflowing_sub(1);
@@ -489,8 +489,8 @@ impl Value<'_> {
 
 
 
-impl<'a> std::ops::BitAnd for Value<'a> {
-    type Output = Value<'a>;
+impl std::ops::BitAnd for Value {
+    type Output = Value;
     fn bitand(self, rhs: Value) -> Self::Output {
         match (self, rhs) {
             (Value::U8(lhs), Value::U8(rhs)) => Value::U8(lhs & rhs),
@@ -506,8 +506,8 @@ impl<'a> std::ops::BitAnd for Value<'a> {
     }
 }
 
-impl std::ops::BitOr for Value<'_> {
-    type Output = Value<'static>;
+impl std::ops::BitOr for Value {
+    type Output = Value;
     fn bitor(self, rhs: Value) -> Self::Output {
         match (self, rhs) {
             (Value::U8(lhs), Value::U8(rhs)) => Value::U8(lhs | rhs),
@@ -523,8 +523,8 @@ impl std::ops::BitOr for Value<'_> {
     }
 }
 
-impl std::ops::BitXor for Value<'_> {
-    type Output = Value<'static>;
+impl std::ops::BitXor for Value {
+    type Output = Value;
     fn bitxor(self, rhs: Value) -> Self::Output {
         match (self, rhs) {
             (Value::U8(lhs), Value::U8(rhs)) => Value::U8(lhs ^ rhs),
@@ -540,9 +540,9 @@ impl std::ops::BitXor for Value<'_> {
     }
 }
 
-impl<'a> std::ops::Shl<Value<'a>> for Value<'_> {
-    type Output = Value<'a>;
-    fn shl(self, rhs: Value<'a>) -> Self::Output {
+impl std::ops::Shl<Value> for Value {
+    type Output = Value;
+    fn shl(self, rhs: Value) -> Self::Output {
         match (self, rhs) {
             (Value::U8(lhs), Value::U8(rhs)) => Value::U8(lhs << rhs),
             (Value::I8(lhs), Value::I8(rhs)) => Value::I8(lhs << rhs),
@@ -557,8 +557,8 @@ impl<'a> std::ops::Shl<Value<'a>> for Value<'_> {
     }
 }
 
-impl<'a> std::ops::Shr<Value<'a>> for Value<'a> {
-    type Output = Value<'a>;
+impl std::ops::Shr<Value> for Value {
+    type Output = Value;
     fn shr(self, rhs: Value) -> Self::Output {
         match (self, rhs) {
             (Value::U8(lhs), Value::U8(rhs)) => Value::U8(lhs >> rhs),
@@ -574,8 +574,8 @@ impl<'a> std::ops::Shr<Value<'a>> for Value<'a> {
     }
 }
 
-impl std::ops::Not for Value<'_> {
-    type Output = Value<'static>;
+impl std::ops::Not for Value {
+    type Output = Value;
 
     fn not(self) -> Self::Output {
         match self {
@@ -592,8 +592,8 @@ impl std::ops::Not for Value<'_> {
     }
 }
 
-impl<'a> PartialEq<Value<'a>> for Value<'a> {
-    fn eq(&self, other: &Value<'a>) -> bool {
+impl PartialEq<Value> for Value {
+    fn eq(&self, other: &Value) -> bool {
         match (self, other) {
             (Value::U8(lhs), Value::U8(rhs)) => lhs == rhs,
             (Value::I8(lhs), Value::I8(rhs)) => lhs == rhs,
@@ -610,8 +610,8 @@ impl<'a> PartialEq<Value<'a>> for Value<'a> {
     }
 }
 
-impl<'a> PartialOrd<Value<'a>> for Value<'a> {
-    fn partial_cmp(&self, other: &Value<'a>) -> Option<Ordering> {
+impl PartialOrd<Value> for Value {
+    fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
         match (self, other) {
             (Value::U8(lhs), Value::U8(rhs)) => lhs.partial_cmp(rhs),
             (Value::I8(lhs), Value::I8(rhs)) => lhs.partial_cmp(rhs),
@@ -628,7 +628,7 @@ impl<'a> PartialOrd<Value<'a>> for Value<'a> {
     }
 }
 
-impl<'a> Into<Box<[u8]>> for Value<'a> {
+impl Into<Box<[u8]>> for Value {
     fn into(self) -> Box<[u8]> {
         match self {
             Value::U8(val) => Box::new([val]),
@@ -646,62 +646,62 @@ impl<'a> Into<Box<[u8]>> for Value<'a> {
     }
 }
 
-impl<'a> Into<Value<'a>> for u8 {
-    fn into(self) -> Value<'a> {
+impl Into<Value> for u8 {
+    fn into(self) -> Value {
         Value::U8(self)
     }
 }
 
-impl<'a> Into<Value<'a>> for i8 {
-    fn into(self) -> Value<'a> {
+impl Into<Value> for i8 {
+    fn into(self) -> Value {
         Value::I8(self)
     }
 }
 
-impl<'a> Into<Value<'a>> for u16 {
-    fn into(self) -> Value<'a> {
+impl Into<Value> for u16 {
+    fn into(self) -> Value {
         Value::U16(self)
     }
 }
 
-impl<'a> Into<Value<'a>> for i16 {
-    fn into(self) -> Value<'a> {
+impl Into<Value> for i16 {
+    fn into(self) -> Value {
         Value::I16(self)
     }
 }
 
-impl<'a> Into<Value<'a>> for u32 {
-    fn into(self) -> Value<'a> {
+impl Into<Value> for u32 {
+    fn into(self) -> Value {
         Value::U32(self)
     }
 }
 
-impl<'a> Into<Value<'a>> for i32 {
-    fn into(self) -> Value<'a> {
+impl Into<Value> for i32 {
+    fn into(self) -> Value {
         Value::I32(self)
     }
 }
 
-impl<'a> Into<Value<'a>> for u64 {
-    fn into(self) -> Value<'a> {
+impl Into<Value> for u64 {
+    fn into(self) -> Value {
         Value::U64(self)
     }
 }
 
-impl<'a> Into<Value<'a>> for i64 {
-    fn into(self) -> Value<'a> {
+impl Into<Value> for i64 {
+    fn into(self) -> Value {
         Value::I64(self)
     }
 }
 
-impl<'a> Into<Value<'a>> for f32 {
-    fn into(self) -> Value<'a> {
+impl Into<Value> for f32 {
+    fn into(self) -> Value {
         Value::F32(self)
     }
 }
 
-impl<'a> Into<Value<'a>> for f64 {
-    fn into(self) -> Value<'a> {
+impl Into<Value> for f64 {
+    fn into(self) -> Value {
         Value::F64(self)
     }
 }

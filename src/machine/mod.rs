@@ -18,7 +18,7 @@ pub enum InstructionResult {
     Continue,
     Return,
     Unwind(Box<str>),
-    Call(FunctionPath),
+    Call(Function, Frame),
     CallContinuation(DelimitedContinuation),
 }
 
@@ -32,7 +32,7 @@ pub enum Fault {
     InvalidInstruction,
     InvalidRegister,
     InvalidJump,
-    FunctionNotFound(String),
+    FunctionNotFound(FunctionPath),
     ContinuationNotFound(u64),
     InvalidString,
     InvalidOperation(String),
@@ -45,7 +45,7 @@ pub struct Register {
 }
 
 impl Register {
-    fn get_value<'a>(&self, size: ValueType) -> Value<'a> {
+    fn get_value(&self, size: ValueType) -> Value {
         match size {
             ValueType::U8 => Value::U8(self.value[0]),
             ValueType::I8 => Value::I8(i8::from_le_bytes([self.value[0]])),
@@ -193,7 +193,7 @@ impl Default for Register {
 
 
 pub fn call_main(core: &mut Core, module: Arc<Module>) -> Result<(), Fault> {
-    let main = module.get_function(&"main".into()).ok_or(Fault::FunctionNotFound("main".to_string()))?;
+    let main = module.get_function(&"main".into()).ok_or(Fault::FunctionNotFound("main".into()))?;
     let main_frame = Frame::new("main".into(), main.get_instructions());
     let mut frames = Vec::new();
     let memory = Memory::new();
@@ -247,9 +247,8 @@ pub fn call_bytecode_function(core: &mut Core,
             InstructionResult::Unwind(effect_name) => {
                 todo!("Add code for checking effect to handle before continue unwinding")
             },
-            InstructionResult::Call(path) => {
-                let function = module.get_function(&path).ok_or(Fault::FunctionNotFound(path.to_string()))?;
-                let new_stack_frame = Frame::new(path, function.get_instructions());
+
+            InstructionResult::Call(function, new_stack_frame) => {
                 frames.push(&stack_frame as *const dyn StackFrame);
                 match function {
                     Function::ByteCode(_) => {

@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use crate::instruction::{ComparisonType, Condition, Immediate, Instruction, JumpTarget, RegisterType, Source, Target};
+use crate::instruction::{CallTarget, ComparisonType, Condition, Immediate, Instruction, JumpTarget, RegisterType, Source, Target};
 use crate::machine::{call_main, Fault, InstructionResult};
 use crate::machine::core::Core;
 use crate::memory::Memory;
@@ -34,6 +34,14 @@ fn dp_fib() -> Arc<[Instruction]> {
     ])
 }
 
+fn hello_world_main() -> Arc<[Instruction]> {
+    use Instruction::*;
+    Arc::new([
+        Call(CallTarget::Label("hello_world".into()), Condition::Always),
+        Return(Condition::Always),
+    ])
+}
+
 fn hello_world(core: &mut Core, module: Arc<Module>, stack_frames: &mut Vec<*const dyn StackFrame>, memory: Memory, continuation_store: &mut ContinuationStore) -> Result<InstructionResult,Fault> {
     println!("Hello, world!");
     Ok(InstructionResult::Continue)
@@ -43,7 +51,8 @@ fn main() {
     let mut module = Module::default();
 
     module.add_function(&"main".into(), Function::ByteCode(dp_fib()));
-    module.add_function(&"main".into(), Function::Native(hello_world));
+    module.add_function(&"main".into(), Function::ByteCode(hello_world_main()));
+    module.add_function(&"hello_world".into(), Function::Native(hello_world));
 
     let mut core = Core::default();
     let module = Arc::new(module);

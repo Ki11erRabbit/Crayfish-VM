@@ -68,8 +68,8 @@ pub enum Immediate {
     F64(f64),
 }
 
-impl<'a> Into<Value<'a>> for Immediate {
-    fn into(self) -> Value<'a> {
+impl Into<Value> for Immediate {
+    fn into(self) -> Value {
         match self {
             Immediate::U8(value) => Value::U8(value),
             Immediate::U16(value) => Value::U16(value),
@@ -85,8 +85,8 @@ impl<'a> Into<Value<'a>> for Immediate {
     }
 }
 
-impl<'a> Into<Value<'a>> for &Immediate {
-    fn into(self) -> Value<'a> {
+impl Into<Value> for &Immediate {
+    fn into(self) -> Value {
         match self {
             Immediate::U8(value) => Value::U8(*value),
             Immediate::U16(value) => Value::U16(*value),
@@ -175,7 +175,7 @@ pub enum ComparisonType {
 #[derive(Debug, Clone)]
 pub enum CallTarget {
     Label(FunctionPath),
-    Vtable(Source),
+    Vtable(Source, Source),
     Continuation(Source),
     Closure(Source),
 }

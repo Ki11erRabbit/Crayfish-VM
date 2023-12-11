@@ -1,10 +1,12 @@
 use std::fmt::Display;
-use crate::instruction::{ComparisonType, Condition, Instruction, JumpTarget, RegisterType, Source, Target};
+use std::sync::Arc;
+use crate::instruction::{CallTarget, ComparisonType, Condition, Instruction, JumpTarget, RegisterType, Source, Target};
 use crate::machine::{Fault, InstructionResult, Register};
 use crate::memory::Memory;
 use crate::program::Module;
 use crate::stack_frame::{REGISTER_COUNT, StackFrame};
 use crate::stack_frame::delimited_continuation::ContinuationStore;
+use crate::stack_frame::frame::Frame;
 use crate::value::{Value, ValueType};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -60,11 +62,11 @@ impl Default for Core {
 }
 
 trait CoreUtils<T> {
-    fn get_value<'a>(&self, source: T) -> Value<'a>;
+    fn get_value(&self, source: T) -> Value;
 }
 
 impl CoreUtils<&Source> for Core {
-    fn get_value<'a>(&self, source: &Source) -> Value<'a> {
+    fn get_value(&self, source: &Source) -> Value {
         match source {
             Source::Register(index, register_type) => {
                 let register = &self.registers[*index];
@@ -87,7 +89,7 @@ impl CoreUtils<&Source> for Core {
 }
 
 impl CoreUtils<&Target> for Core {
-    fn get_value<'a>(&self, source: &Target) -> Value<'a> {
+    fn get_value(&self, source: &Target) -> Value {
         match source {
             Target(index, register_type) => {
                 let register = &self.registers[*index];
@@ -134,24 +136,25 @@ impl Core {
         let instruction = stack_frame.get_instruction();
 
         use Instruction::*;
-        match &instruction {
+        match instruction {
             Halt => return Ok(InstructionResult::Stop),
             NoOp => (),
-            Load(target, source) => self.load_instruction(target, source),
-            Add(target, source, can_wrap, use_carry) => self.add_instruction(target, source, *can_wrap, *use_carry)?,
-            Sub(target, source, can_wrap, use_carry) => self.sub_instruction(target, source, *can_wrap, *use_carry)?,
-            Mul(target, source, can_wrap) => self.mul_instruction(target, source, *can_wrap)?,
-            Div(target, source, can_wrap) => self.div_instruction(target, source, *can_wrap)?,
-            Mod(target, source, can_wrap) => self.mod_instruction(target, source, *can_wrap)?,
-            And(target, source) => self.and_instruction(target, source),
-            Or(target, source) => self.or_instruction(target, source),
-            Xor(target, source) => self.xor_instruction(target, source),
-            Not(target) => self.not_instruction(target),
-            ShiftLeft(target, source) => self.shift_left_instruction(target, source),
-            ShiftRight(target, source) => self.shift_right_instruction(target, source),
-            Goto(jump_target, condition) => return self.goto_instruction(stack_frame, jump_target, condition),
-            Compare(target, source, comparison_type) => self.compare_instruction(target, source, comparison_type),
-            Return(condition) => return self.return_instruction(stack_frame, condition),
+            Load(ref target, ref source) => self.load_instruction(target, source),
+            Add(ref target, ref source, can_wrap, use_carry) => self.add_instruction(target, source, can_wrap, use_carry)?,
+            Sub(ref target, ref source, can_wrap, use_carry) => self.sub_instruction(target, source, can_wrap, use_carry)?,
+            Mul(ref target, ref source, can_wrap) => self.mul_instruction(target, source, can_wrap)?,
+            Div(ref target, ref source, can_wrap) => self.div_instruction(target, source, can_wrap)?,
+            Mod(ref target, ref source, can_wrap) => self.mod_instruction(target, source, can_wrap)?,
+            And(ref target, ref source) => self.and_instruction(target, source),
+            Or(ref target, ref source) => self.or_instruction(target, source),
+            Xor(ref target, ref source) => self.xor_instruction(target, source),
+            Not(ref target) => self.not_instruction(target),
+            ShiftLeft(ref target, ref source) => self.shift_left_instruction(target, source),
+            ShiftRight(ref target, ref source) => self.shift_right_instruction(target, source),
+            Goto(ref jump_target, ref condition) => return self.goto_instruction(stack_frame, jump_target, condition),
+            Compare(ref target, ref source, ref comparison_type) => self.compare_instruction(target, source, comparison_type),
+            Return(ref condition) => return self.return_instruction(stack_frame, condition),
+            Call(call_target, ref condition) => return self.call_instruction(stack_frame, module, memory1, continuation_store, call_target, condition),
 
             x => unreachable!("Unimplemented instruction: {:?}", x),
         }
@@ -568,6 +571,34 @@ impl Core {
             return Ok(InstructionResult::Return);
         }
         stack_frame.increment_program_counter();
+        Ok(InstructionResult::Continue)
+    }
+
+    fn call_instruction(&mut self,
+                        stack_frame: &mut dyn StackFrame,
+                        module: &Module,
+                        memory: Memory,
+                        continuation_store: &mut ContinuationStore,
+                        call_target: CallTarget,
+                        condition: &Condition) -> Result<InstructionResult, Fault> {
+
+        stack_frame.increment_program_counter();
+        if self.can_jump(condition, stack_frame) {
+            match call_target {
+                CallTarget::Label(path) => {
+                    let function = module.get_function(&path).ok_or(Fault::FunctionNotFound(path.clone()))?;
+                    let instructions = function.get_instructions();
+                    let new_stack_frame = Frame::new(path,instructions);
+
+                    return Ok(InstructionResult::Call(function, new_stack_frame));
+                }
+                CallTarget::Vtable(object_reference_source, index_source) => {
+                    todo!("Lookup object reference and create the stack frame from the vtable")
+                }
+                CallTarget::Continuation(continuation_index) => {}
+                CallTarget::Closure(_) => {}
+            }
+        }
         Ok(InstructionResult::Continue)
     }
 }
