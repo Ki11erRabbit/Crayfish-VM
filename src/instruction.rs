@@ -15,6 +15,7 @@ pub enum RegisterType {
     I64,
     F32,
     F64,
+    Reference,
 }
 
 impl Into<ValueType> for RegisterType {
@@ -30,6 +31,7 @@ impl Into<ValueType> for RegisterType {
             RegisterType::I64 => ValueType::I64,
             RegisterType::F32 => ValueType::F32,
             RegisterType::F64 => ValueType::F64,
+            RegisterType::Reference => ValueType::MemoryRef,
         }
     }
 }

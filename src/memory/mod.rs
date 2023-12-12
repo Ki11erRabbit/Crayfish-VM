@@ -90,6 +90,9 @@ impl Memory {
 
                     for value in list.iter() {
                         match value {
+                            Value::MemoryRef(index) => {
+                                Self::deallocate_helper(reference_table, *index)?;
+                            }
                             Value::ArrayRef(index) => {
                                 Self::deallocate_helper(reference_table, *index)?;
                             }
@@ -105,10 +108,10 @@ impl Memory {
                 }
                 MemoryObject::StringTableRef(_, _) => {}
                 MemoryObject::String(pointer) => {
-                    unsafe { Box::from_raw(pointer as *mut str) };
+                    let _ = unsafe { Box::from_raw(pointer as *mut str) };
                 }
                 MemoryObject::Object(object) => {
-                    unsafe { Box::from_raw(object) };
+                    let _ = unsafe { Box::from_raw(object) };
                 }
                 MemoryObject::Null => {}
             }
@@ -136,7 +139,7 @@ impl Memory {
         }
         let pointer = MemoryObject::Pointer(pointer, size, value_type);
         let index = self.allocate(pointer)?;
-        Ok(Value::U64(index))
+        Ok(Value::MemoryRef(index))
     }
 
     pub fn allocate_list(&mut self, length: usize, size: ValueType) -> Result<Value, Fault> {
@@ -149,7 +152,7 @@ impl Memory {
         let list = list as *mut [Value];
         let list = MemoryObject::List(list);
         let index = self.allocate(list)?;
-        Ok(Value::ArrayRef(index))
+        Ok(Value::MemoryRef(index))
     }
 
     pub fn access_list(&self, reference: u64, index: u64) -> Result<Value, Fault> {
@@ -194,7 +197,7 @@ impl Memory {
     pub fn allocate_string(&mut self, string: &str) -> Result<Value, Fault> {
         let string = MemoryObject::String(string);
         let index = self.allocate(string)?;
-        Ok(Value::StringRef(index))
+        Ok(Value::MemoryRef(index))
     }
 
     pub fn get_string<'a>(&'a self, reference: u64, module: &'a Module) -> Result<&str, Fault> {
@@ -221,7 +224,7 @@ impl Memory {
                 Ok(mut string_lookup_table) => {
                     string_lookup_table.insert((path.clone(), table_index), index);
 
-                    return Ok(Value::StringRef(index));
+                    return Ok(Value::MemoryRef(index));
                 }
                 Err(TryLockError::WouldBlock)=> {}
                 Err(TryLockError::Poisoned(_)) => Err(Fault::MemoryError("Poisoned".to_string()))?,
@@ -233,10 +236,10 @@ impl Memory {
         loop {
             match self.string_lookup_table.try_read() {
                 Ok(string_lookup_table) => {
-                    if let Some(index) = string_lookup_table.get(&(path.clone(), table_index)) {
-                        return Ok(Value::StringRef(*index));
+                    return if let Some(index) = string_lookup_table.get(&(path.clone(), table_index)) {
+                        Ok(Value::MemoryRef(*index))
                     } else {
-                        return Err(Fault::InvalidReference);
+                        Err(Fault::InvalidReference)
                     }
                 }
                 Err(TryLockError::WouldBlock)=> {}

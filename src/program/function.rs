@@ -18,12 +18,15 @@ pub struct FunctionPath {
     pub(crate) path: Box<[Box<str>]>
 }
 
+
 impl Display for FunctionPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut path = String::new();
-        for part in self.path.iter() {
+        for (i, part) in self.path.iter().enumerate() {
             path.push_str(part);
-            path.push_str("::");
+            if i != self.path.len() - 1 {
+                path.push_str("::");
+            }
         }
         write!(f, "{}", path)
     }
@@ -47,6 +50,21 @@ impl Into<FunctionPath> for &str {
 pub enum Function {
     ByteCode(Arc<[Instruction]>),
     Native(NativeFunction),
+}
+
+impl Display for Function {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Function::ByteCode(_) => write!(f, "ByteCode Function"),
+            Function::Native(_) => write!(f, "Native Function"),
+        }
+    }
+}
+
+impl Debug for Function {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
 }
 
 impl Function {

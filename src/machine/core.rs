@@ -56,7 +56,7 @@ impl Default for Core {
     fn default() -> Self {
         Core {
             flags: CoreFlags::default(),
-            registers: [Register::default(); REGISTER_COUNT],
+            registers: std::array::from_fn(|_| Register::default()),
         }
     }
 }
@@ -81,6 +81,7 @@ impl CoreUtils<&Source> for Core {
                     RegisterType::I64 => register.get_value(ValueType::I64),
                     RegisterType::F32 => register.get_value(ValueType::F32),
                     RegisterType::F64 => register.get_value(ValueType::F64),
+                    RegisterType::Reference => register.get_value(ValueType::MemoryRef),
                 }
             }
             Source::Immediate(immediate) => immediate.into(),
@@ -104,6 +105,7 @@ impl CoreUtils<&Target> for Core {
                     RegisterType::I64 => register.get_value(ValueType::I64),
                     RegisterType::F32 => register.get_value(ValueType::F32),
                     RegisterType::F64 => register.get_value(ValueType::F64),
+                    RegisterType::Reference => register.get_value(ValueType::MemoryRef),
                 }
             }
         }
@@ -130,7 +132,7 @@ impl Core {
                                stack_frame: &mut dyn StackFrame,
                                module: &Module,
                                frames: &mut Vec<*mut dyn StackFrame>,
-                               memory: Memory,
+                               mut memory: Memory,
                                continuation_store: &mut ContinuationStore,
     ) -> Result<InstructionResult,Fault> {
 
@@ -161,6 +163,9 @@ impl Core {
             Push(ref source) => self.push_instruction(stack_frame, source),
             Pop(ref target) => self.pop_instruction(stack_frame, target),
             GetStringRef(ref target, ref path, index) => self.get_string_ref_instruction(target, path, index, &memory)?,
+            ListAccess(ref target, ref source, ref index) => self.list_access_instruction(target, source, index, &memory)?,
+            ListStore(ref source, ref index, ref value) => self.list_store_instruction(source, index, value, &mut memory)?,
+            CreateList(ref target, ref size) => self.create_list_instruction(target, size, &mut memory)?,
 
             x => unreachable!("Unimplemented instruction: {:?}", x),
         }
@@ -509,15 +514,19 @@ impl Core {
             match jump_target {
                 JumpTarget::Label(label) => {
                     todo!("Label Goto");
+                    return Ok(InstructionResult::Continue);
                 },
                 JumpTarget::Relative(offset) => {
                     stack_frame.set_program_counter((stack_frame.get_program_counter() as isize + *offset) as usize);
+                    return Ok(InstructionResult::Continue);
                 },
                 JumpTarget::Absolute(address) => {
                     stack_frame.set_program_counter(*address);
+                    return Ok(InstructionResult::Continue);
                 },
             }
         }
+        stack_frame.increment_program_counter();
         Ok(InstructionResult::Continue)
     }
 
@@ -668,7 +677,7 @@ impl Core {
     fn get_string_ref_instruction(&mut self, target: &Target, path: &StringTablePath, table_index: u64, memory: &Memory) -> Result<(), Fault>{
         let string = memory.get_string_ref_from_path(path, table_index)?;
         match string {
-            Value::StringRef(index) => {
+            Value::MemoryRef(index) => {
                 self.set_value(target, Value::U64(index));
                 Ok(())
             },
@@ -688,7 +697,7 @@ impl Core {
         let list = self.get_value(list);
 
         let length = match list {
-            Value::U64(index) => memory.get_list_length(index)?,
+            Value::MemoryRef(index) => memory.get_list_length(index)?,
             _ => return Err(Fault::InvalidReference),
         };
 

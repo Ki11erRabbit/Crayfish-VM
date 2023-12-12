@@ -10,7 +10,7 @@ use crate::stack_frame::delimited_continuation::DelimitedContinuation;
 use crate::value::{Value, ValueType};
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FrameInfo {
     function_name: FunctionPath,
     instructions: Arc<[Instruction]>,
@@ -18,10 +18,9 @@ pub struct FrameInfo {
 }
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Frame {
     frame_info: FrameInfo,
-    return_address: Option<ReturnAddress>,
     stack: SmallVec<[u8; 128]>,
     stack_pointer: usize,
     call_backup: Option<[Register; REGISTER_COUNT]>,
@@ -36,7 +35,6 @@ impl Frame {
                 instructions,
                 program_counter: 0,
             },
-            return_address: None,
             stack: SmallVec::new(),
             stack_pointer: 0,
             call_backup: None,
@@ -249,13 +247,15 @@ impl StackFrame for Frame {
     }
 
     fn backup_registers(&mut self, registers: &[Register; REGISTER_COUNT]) {
-        self.call_backup = Some(*registers);
+        self.call_backup = Some(registers.clone());
 
     }
 
     fn restore_registers(&mut self, registers: &mut [Register; REGISTER_COUNT]) {
         if let Some(call_backup) = &self.call_backup {
-            registers[8..].copy_from_slice(&call_backup[8..]);
+            for i in 8..REGISTER_COUNT {
+                registers[i] = call_backup[i].clone();
+            }
         }
     }
 
@@ -266,20 +266,12 @@ impl StackFrame for Frame {
 
     fn restore_registers_for_gc(&mut self, registers: &mut [Register; REGISTER_COUNT]) {
         if let Some(gc_backup) = &self.gc_backup {
-            registers.copy_from_slice(gc_backup);
+            for i in 8..REGISTER_COUNT {
+                registers[i] = gc_backup[i].clone();
+            }
         }
     }
 
-    fn set_return_address(&mut self, return_address: ReturnAddress) {
-        self.return_address = Some(return_address);
-    }
-
-    fn create_return_address(&self) -> ReturnAddress {
-        ReturnAddress {
-            program_counter: self.frame_info.program_counter,
-            function_name: self.frame_info.function_name.clone(),
-        }
-    }
 
     fn get_function_name(&self) -> FunctionPath {
         self.frame_info.function_name.clone()

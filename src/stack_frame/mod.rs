@@ -12,7 +12,7 @@ pub const REGISTER_COUNT: usize = 32;
 
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ReturnAddress {
     program_counter: usize,
     function_name: FunctionPath,
@@ -38,9 +38,7 @@ pub trait StackFrame {
     fn backup_registers_for_gc(&mut self, registers: &mut [Register; REGISTER_COUNT]);
 
     fn restore_registers_for_gc(&mut self, registers: &mut [Register; REGISTER_COUNT]);
-    fn set_return_address(&mut self, return_address: ReturnAddress);
 
-    fn create_return_address(&self) -> ReturnAddress;
 
     fn get_function_name(&self) -> FunctionPath;
 

@@ -19,6 +19,7 @@ pub enum ValueType {
     I64,
     F32,
     F64,
+    MemoryRef,
     Object,
     ObjectRef,
     String,
@@ -41,6 +42,7 @@ impl ValueType {
             ValueType::I64 => 8,
             ValueType::F32 => 4,
             ValueType::F64 => 8,
+            ValueType::MemoryRef => 8,
             ValueType::Object => 8,
             ValueType::ObjectRef => 8,
             ValueType::String => 8,
@@ -52,7 +54,7 @@ impl ValueType {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub enum Value {
     U8(u8),
     I8(i8),
@@ -64,6 +66,7 @@ pub enum Value {
     I64(i64),
     F32(f32),
     F64(f64),
+    MemoryRef(u64),
     ObjectRef(u64),
     Object(*mut Object),
     StringRef(u64),
@@ -87,11 +90,203 @@ impl Value {
             ValueType::I64 => Value::I64(0),
             ValueType::F32 => Value::F32(0.0),
             ValueType::F64 => Value::F64(0.0),
+            ValueType::MemoryRef => Value::MemoryRef(0),
             ValueType::ObjectRef => Value::ObjectRef(0),
             ValueType::StringRef => Value::StringRef(0),
             ValueType::ArrayRef => Value::ArrayRef(0),
             ValueType::Function => todo!("Figure out how to make this work"),
             _ => panic!("Cannot create value of type {:?}", typ),
+        }
+    }
+
+    pub fn transmute(self, typ: ValueType) -> Self {
+        match typ {
+            ValueType::U8 => {
+                match self {
+                    Value::U8(value) => Value::U8(value),
+                    Value::I8(value) => Value::U8(u8::from_le_bytes(value.to_le_bytes())),
+                    Value::U16(value) => Value::U8(value as u8),
+                    Value::I16(value) => Value::U8(value as u8),
+                    Value::U32(value) => Value::U8(value as u8),
+                    Value::I32(value) => Value::U8(value as u8),
+                    Value::U64(value) => Value::U8(value as u8),
+                    Value::I64(value) => Value::U8(value as u8),
+                    Value::F32(value) => Value::U8(value as u8),
+                    Value::F64(value) => Value::U8(value as u8),
+                    _ => panic!("Cannot transmute value of type {:?} to {:?}", self.get_type(), typ),
+                }
+            },
+            ValueType::I8 => {
+                match self {
+                    Value::U8(value) => Value::I8(i8::from_le_bytes(value.to_le_bytes())),
+                    Value::I8(value) => Value::I8(value),
+                    Value::U16(value) => Value::I8(value as i8),
+                    Value::I16(value) => Value::I8(value as i8),
+                    Value::U32(value) => Value::I8(value as i8),
+                    Value::I32(value) => Value::I8(value as i8),
+                    Value::U64(value) => Value::I8(value as i8),
+                    Value::I64(value) => Value::I8(value as i8),
+                    Value::F32(value) => Value::I8(value as i8),
+                    Value::F64(value) => Value::I8(value as i8),
+                    _ => panic!("Cannot transmute value of type {:?} to {:?}", self.get_type(), typ),
+                }
+            },
+            ValueType::U16 => {
+                match self {
+                    Value::U8(value) => Value::U16(value as u16),
+                    Value::I8(value) => Value::U16(value as u16),
+                    Value::U16(value) => Value::U16(value),
+                    Value::I16(value) => Value::U16(u16::from_le_bytes(value.to_le_bytes())),
+                    Value::U32(value) => Value::U16(value as u16),
+                    Value::I32(value) => Value::U16(value as u16),
+                    Value::U64(value) => Value::U16(value as u16),
+                    Value::I64(value) => Value::U16(value as u16),
+                    Value::F32(value) => Value::U16(value as u16),
+                    Value::F64(value) => Value::U16(value as u16),
+                    _ => panic!("Cannot transmute value of type {:?} to {:?}", self.get_type(), typ),
+                }
+            },
+            ValueType::I16 => {
+                match self {
+                    Value::U8(value) => Value::I16(value as i16),
+                    Value::I8(value) => Value::I16(value as i16),
+                    Value::U16(value) =>Value::I16(i16::from_le_bytes(value.to_le_bytes())),
+                    Value::I16(value) => Value::I16(value),
+                    Value::U32(value) => Value::I16(value as i16),
+                    Value::I32(value) => Value::I16(value as i16),
+                    Value::U64(value) => Value::I16(value as i16),
+                    Value::I64(value) => Value::I16(value as i16),
+                    Value::F32(value) => Value::I16(value as i16),
+                    Value::F64(value) => Value::I16(value as i16),
+                    _ => panic!("Cannot transmute value of type {:?} to {:?}", self.get_type(), typ),
+                }
+            },
+            ValueType::U32 => {
+                match self {
+                    Value::U8(value) => Value::U32(value as u32),
+                    Value::I8(value) => Value::U32(value as u32),
+                    Value::U16(value) => Value::U32(value as u32),
+                    Value::I16(value) => Value::U32(value as u32),
+                    Value::U32(value) => Value::U32(value),
+                    Value::I32(value) => Value::U32(u32::from_le_bytes(value.to_le_bytes())),
+                    Value::U64(value) => Value::U32(value as u32),
+                    Value::I64(value) => Value::U32(value as u32),
+                    Value::F32(value) => Value::U32(value as u32),
+                    Value::F64(value) => Value::U32(value as u32),
+                    _ => panic!("Cannot transmute value of type {:?} to {:?}", self.get_type(), typ),
+                }
+            },
+            ValueType::I32 => {
+                match self {
+                    Value::U8(value) => Value::I32(value as i32),
+                    Value::I8(value) => Value::I32(value as i32),
+                    Value::U16(value) => Value::I32(value as i32),
+                    Value::I16(value) => Value::I32(value as i32),
+                    Value::U32(value) => Value::I32(i32::from_le_bytes(value.to_le_bytes())),
+                    Value::I32(value) => Value::I32(value),
+                    Value::U64(value) => Value::I32(value as i32),
+                    Value::I64(value) => Value::I32(value as i32),
+                    Value::F32(value) => Value::I32(value as i32),
+                    Value::F64(value) => Value::I32(value as i32),
+                    _ => panic!("Cannot transmute value of type {:?} to {:?}", self.get_type(), typ),
+                }
+            },
+            ValueType::U64 => {
+                match self {
+                    Value::U8(value) => Value::U64(value as u64),
+                    Value::I8(value) => Value::U64(value as u64),
+                    Value::U16(value) => Value::U64(value as u64),
+                    Value::I16(value) => Value::U64(value as u64),
+                    Value::U32(value) => Value::U64(value as u64),
+                    Value::I32(value) => Value::U64(value as u64),
+                    Value::U64(value) => Value::U64(value),
+                    Value::I64(value) => Value::U64(u64::from_le_bytes(value.to_le_bytes())),
+                    Value::F32(value) => Value::U64(value as u64),
+                    Value::F64(value) => Value::U64(value as u64),
+                    Value::MemoryRef(value) => Value::U64(value),
+                    Value::ArrayRef(value) => Value::U64(value),
+                    Value::ObjectRef(value) => Value::U64(value),
+                    Value::StringRef(value) => Value::U64(value),
+                    _ => panic!("Cannot transmute value of type {:?} to {:?}", self.get_type(), typ),
+                }
+            },
+            ValueType::I64 => {
+                match self {
+                    Value::U8(value) => Value::I64(value as i64),
+                    Value::I8(value) => Value::I64(value as i64),
+                    Value::U16(value) => Value::I64(value as i64),
+                    Value::I16(value) => Value::I64(value as i64),
+                    Value::U32(value) => Value::I64(value as i64),
+                    Value::I32(value) => Value::I64(value as i64),
+                    Value::U64(value) => Value::I64(value as i64),
+                    Value::I64(value) => Value::I64(value),
+                    Value::F32(value) => Value::I64(value as i64),
+                    Value::F64(value) => Value::I64(value as i64),
+                    _ => panic!("Cannot transmute value of type {:?} to {:?}", self.get_type(), typ),
+                }
+            },
+            ValueType::F32 => {
+                match self {
+                    Value::U8(value) => Value::F32(value as f32),
+                    Value::I8(value) => Value::F32(value as f32),
+                    Value::U16(value) => Value::F32(value as f32),
+                    Value::I16(value) => Value::F32(value as f32),
+                    Value::U32(value) => Value::F32(f32::from_le_bytes(value.to_le_bytes())),
+                    Value::I32(value) => Value::F32(f32::from_le_bytes(value.to_le_bytes())),
+                    Value::U64(value) => Value::F32(value as f32),
+                    Value::I64(value) => Value::F32(value as f32),
+                    Value::F32(value) => Value::F32(value),
+                    Value::F64(value) => Value::F32(value as f32),
+                    _ => panic!("Cannot transmute value of type {:?} to {:?}", self.get_type(), typ),
+                }
+            },
+            ValueType::F64 => {
+                match self {
+                    Value::U8(value) => Value::F64(value as f64),
+                    Value::I8(value) => Value::F64(value as f64),
+                    Value::U16(value) => Value::F64(value as f64),
+                    Value::I16(value) => Value::F64(value as f64),
+                    Value::U32(value) => Value::F64(value as f64),
+                    Value::I32(value) => Value::F64(value as f64),
+                    Value::U64(value) => Value::F64(f64::from_le_bytes(value.to_le_bytes())),
+                    Value::I64(value) => Value::F64(f64::from_le_bytes(value.to_le_bytes())),
+                    Value::F32(value) => Value::F64(value as f64),
+                    Value::F64(value) => Value::F64(value),
+                    _ => panic!("Cannot transmute value of type {:?} to {:?}", self.get_type(), typ),
+                }
+            },
+            ValueType::MemoryRef => {
+                match self {
+                    Value::U64(value) => Value::MemoryRef(value),
+                    Value::MemoryRef(value) => Value::MemoryRef(value),
+                    Value::ObjectRef(value) => Value::MemoryRef(value),
+                    Value::StringRef(value) => Value::MemoryRef(value),
+                    Value::ArrayRef(value) => Value::MemoryRef(value),
+                    _ => panic!("Cannot transmute value of type {:?} to {:?}", self.get_type(), typ),
+                }
+            },
+            ValueType::ObjectRef => {
+                match self {
+                    Value::U64(value) => Value::ObjectRef(value),
+                    Value::ObjectRef(value) => Value::ObjectRef(value),
+                    _ => panic!("Cannot transmute value of type {:?} to {:?}", self.get_type(), typ),
+                }
+            }
+            ValueType::StringRef => {
+                match self {
+                    Value::U64(value) => Value::StringRef(value),
+                    Value::StringRef(value) => Value::StringRef(value),
+                    _ => panic!("Cannot transmute value of type {:?} to {:?}", self.get_type(), typ),
+                }
+            }
+            ValueType::ArrayRef => {
+                match self {
+                    Value::U64(value) => Value::ArrayRef(value),
+                    Value::ArrayRef(value) => Value::ArrayRef(value),
+                    _ => panic!("Cannot transmute value of type {:?} to {:?}", self.get_type(), typ),
+                }
+            }
+            _ => panic!("Cannot transmute value of type {:?} to {:?}", self.get_type(), typ),
         }
     }
     pub fn get_type(&self) -> ValueType {
@@ -106,6 +301,7 @@ impl Value {
             Value::I64(_) => ValueType::I64,
             Value::F32(_) => ValueType::F32,
             Value::F64(_) => ValueType::F64,
+            Value::MemoryRef(_) => ValueType::MemoryRef,
             Value::Object(_) => ValueType::Object,
             Value::ObjectRef(_) => ValueType::ObjectRef,
             Value::String(_) => ValueType::String,
@@ -126,6 +322,7 @@ impl Value {
             Value::I32(value) => *value as usize,
             Value::U64(value) => *value as usize,
             Value::I64(value) => *value as usize,
+            Value::MemoryRef(value) => *value as usize,
             _ => panic!("Cannot convert non-integer value to usize"),
         }
     }

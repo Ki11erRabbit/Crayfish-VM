@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::fmt::Debug;
 use std::rc::Rc;
 use std::sync::Arc;
 use crate::instruction::Instruction;
@@ -59,9 +60,15 @@ impl DelimitedContinuation {
         self.start_program_counter
     }
 
-
 }
 
+impl Debug for DelimitedContinuation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DelimitedContinuation")
+            .field("start_program_counter", &self.start_program_counter)
+            .finish()
+    }
+}
 
 
 impl StackFrame for DelimitedContinuation {
@@ -98,13 +105,6 @@ impl StackFrame for DelimitedContinuation {
         self.stack_frame.borrow_mut().restore_registers_for_gc(registers)
     }
 
-    fn set_return_address(&mut self, return_address: ReturnAddress) {
-        self.stack_frame.borrow_mut().set_return_address(return_address)
-    }
-
-    fn create_return_address(&self) -> ReturnAddress {
-        self.stack_frame.borrow().create_return_address()
-    }
 
     fn get_function_name(&self) -> FunctionPath {
         self.stack_frame.borrow().get_function_name()
