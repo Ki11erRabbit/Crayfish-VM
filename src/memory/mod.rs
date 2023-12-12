@@ -7,7 +7,7 @@ use crate::program::{Module, StringTablePath};
 use crate::value::object::Object;
 use crate::value::{Value, ValueType};
 
-
+unsafe impl Send for MemoryObject {}
 #[derive(Debug, Clone)]
 pub enum MemoryObject {
     Null,
@@ -19,17 +19,16 @@ pub enum MemoryObject {
 }
 
 
-
+unsafe impl Send for Memory {}
 #[derive(Debug, Clone)]
 pub struct Memory {
     reference_table: Arc<RwLock<HashMap<u64, MemoryObject>>>,
     string_lookup_table: Arc<RwLock<HashMap<(StringTablePath, u64), u64>>>,
-    rng: rand::rngs::ThreadRng,
 }
 
 impl Memory {
     pub fn new() -> Self {
-        Memory { reference_table: Arc::new(Default::default()), string_lookup_table: Arc::new(Default::default()), rng: rand::thread_rng() }
+        Memory { reference_table: Arc::new(Default::default()), string_lookup_table: Arc::new(Default::default())}
     }
 
     pub fn get(&self, reference: u64) -> Result<MemoryObject, Fault> {
@@ -48,9 +47,9 @@ impl Memory {
         loop {
             match self.reference_table.try_write() {
                 Ok(mut reference_table) => {
-                    let mut index = self.rng.gen::<u64>();
+                    let mut index = rand::random();
                     while reference_table.contains_key(&index) {
-                        index = self.rng.gen::<u64>();
+                        index = rand::random();
                     }
                     reference_table.insert(index, object);
                     return Ok(index);

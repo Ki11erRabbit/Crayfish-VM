@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::fmt::{Display, Formatter};
 use crate::program::function::Function;
 use crate::value::object::Object;
 
@@ -752,6 +753,30 @@ impl Value {
 
 }
 
+impl Display for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::U8(value) => write!(f, "{}", value),
+            Value::I8(value) => write!(f, "{}", value),
+            Value::U16(value) => write!(f, "{}", value),
+            Value::I16(value) => write!(f, "{}", value),
+            Value::U32(value) => write!(f, "{}", value),
+            Value::I32(value) => write!(f, "{}", value),
+            Value::U64(value) => write!(f, "{}", value),
+            Value::I64(value) => write!(f, "{}", value),
+            Value::F32(value) => write!(f, "{}", value),
+            Value::F64(value) => write!(f, "{}", value),
+            Value::MemoryRef(value) => write!(f, "MemoryRef({})", value),
+            Value::Object(value) => todo!("Display for Object"),
+            Value::ObjectRef(value) => write!(f, "ObjectRef({})", value),
+            Value::String(value) => todo!("Display for String"),
+            Value::StringRef(value) => write!(f, "StringRef({})", value),
+            Value::Array(value) => todo!("Display for Array"),
+            Value::ArrayRef(value) => write!(f, "ArrayRef({})", value),
+            Value::Function(value) => write!(f, "Function({})", value),
+        }
+    }
+}
 
 
 impl std::ops::BitAnd for Value {

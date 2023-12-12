@@ -91,12 +91,8 @@ impl Module {
         }
     }
 
-    pub fn add_function(&mut self, path: &FunctionPath, function: Function) {
-        let mut module = self;
-        for part in path.path.iter().take(path.path.len() - 1) {
-            module = module.sub_modules.entry(part.clone()).or_insert_with(|| Module::default());
-        }
-        module.functions.insert(path.path.last().unwrap().clone(), function);
+    pub fn add_function(&mut self, path: &str, function: Function) {
+        self.functions.insert(path.to_string().into(), function);
     }
 
     pub fn get_string(&self, path: &StringTablePath, index: u64) -> Option<&str> {
@@ -140,6 +136,10 @@ impl Module {
             module.add_strings_to_memory_helper(memory, path);
             path.pop();
         }
+    }
+
+    pub fn add_sub_module(&mut self, module: Module) {
+        self.sub_modules.insert(module.module_name.clone(), module);
     }
 }
 

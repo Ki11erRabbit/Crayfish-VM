@@ -20,6 +20,8 @@ pub enum Comparison {
     GreaterThan,
     GreaterThanOrEqual,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CoreFlags {
     comparison: Comparison,
     carry: bool,
@@ -113,6 +115,8 @@ impl CoreUtils<&Target> for Core {
     }
 }
 
+unsafe impl Send for Core {}
+#[derive(Clone)]
 pub struct Core {
     flags: CoreFlags,
     pub registers: [Register; REGISTER_COUNT],

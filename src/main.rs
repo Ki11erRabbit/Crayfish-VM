@@ -18,6 +18,7 @@ pub mod machine;
 pub mod program;
 pub mod memory;
 mod backtrace;
+mod native_lib;
 
 
 fn dp_fib() -> Arc<[Instruction]> {
@@ -27,7 +28,7 @@ fn dp_fib() -> Arc<[Instruction]> {
         Instruction::new_without_metadata(Load(Target(2, RegisterType::U64), Source::Immediate(Immediate::U64(1)))),
         Instruction::new_without_metadata(Load(Target(3, RegisterType::U64), Source::Immediate(Immediate::U64(2)))),
         Instruction::new_without_metadata(Compare(Target(3, RegisterType::U64), Source::Immediate(Immediate::U64(10)), ComparisonType::Equal)),
-        Instruction::new_without_metadata(Return(Condition::Equal)),
+        Instruction::new_without_metadata(Goto(JumpTarget::Relative(8), Condition::Equal)),
         Instruction::new_without_metadata(Add(Target(4, RegisterType::U64), Source::Register(1, RegisterType::U64), false, false)),
         Instruction::new_without_metadata(Add(Target(4, RegisterType::U64), Source::Register(2, RegisterType::U64), false, false)),
         Instruction::new_without_metadata(Load(Target(1, RegisterType::U64), Source::Register(2, RegisterType::U64))),
@@ -35,6 +36,11 @@ fn dp_fib() -> Arc<[Instruction]> {
         Instruction::new_without_metadata(Sub(Target(4, RegisterType::U64), Source::Register(4, RegisterType::U64), false, false)),
         Instruction::new_without_metadata(Add(Target(3, RegisterType::U64), Source::Immediate(Immediate::U64(1)), false, false)),
         Instruction::new_without_metadata(Goto(JumpTarget::Relative(-8), Condition::Always)),
+        Instruction::new_without_metadata(GetStringRef(Target(8, RegisterType::U64), "".into(), 0)),
+        Instruction::new_without_metadata(Call(CallTarget::Label("std::io::println_string".into()), Condition::Always)),
+        Instruction::new_without_metadata(Load(Target(8, RegisterType::U64), Source::Register(2, RegisterType::U64))),
+        Instruction::new_without_metadata(Call(CallTarget::Label("std::io::println_u64".into()), Condition::Always)),
+        Instruction::new_without_metadata(Return(Condition::Always)),
     ])
 }
 
@@ -96,6 +102,7 @@ fn rec_fib() -> Arc<[Instruction]> {
     ])
 }
 
+
 fn rec_fib_main() -> Arc<[Instruction]> {
     use RealInstruction::*;
     Arc::new([
@@ -105,16 +112,26 @@ fn rec_fib_main() -> Arc<[Instruction]> {
     ])
 }
 
+fn print_io_mod() -> Arc<[Instruction]> {
+    use RealInstruction::*;
+    Arc::new([
+        Instruction::new_without_metadata(GetStringRef(Target(8, RegisterType::U64), "".into(), 0)),
+        Instruction::new_without_metadata(Call(CallTarget::Label("std::io::println_string".into()), Condition::Always)),
+        Instruction::new_without_metadata(Return(Condition::Always)),
+    ])
+}
 
 fn main() {
     let mut module = Module::default();
-    module.add_function(&"main".into(), Function::ByteCode(dp_fib()));
-    module.add_function(&"main".into(), Function::ByteCode(hello_world_main()));
-    module.add_function(&"hello_world".into(), Function::Native(hello_world));
-    module.add_function(&"print_string".into(), Function::Native(print_string));
-    module.add_function(&"main".into(), Function::ByteCode(print_string_main()));
-    module.add_function(&"fib".into(), Function::ByteCode(rec_fib()));
-    module.add_function(&"main".into(), Function::ByteCode(rec_fib_main()));
+    module.add_sub_module(native_lib::get_std_module());
+    module.add_function("main", Function::ByteCode(hello_world_main()));
+    module.add_function("hello_world", Function::Native(hello_world));
+    module.add_function("print_string", Function::Native(print_string));
+    module.add_function("main", Function::ByteCode(print_string_main()));
+    module.add_function("fib", Function::ByteCode(rec_fib()));
+    module.add_function("main", Function::ByteCode(rec_fib_main()));
+    module.add_function("main", Function::ByteCode(print_io_mod()));
+    module.add_function("main", Function::ByteCode(dp_fib()));
     module.add_string(&"".into(), "Hello, world!");
 
     let mut core = Core::default();
@@ -126,7 +143,7 @@ fn main() {
 
     match call_main(&mut core, module, memory, &mut backtrace) {
         Ok(_) => {
-            println!("Program finished successfully");
+            //println!("Program finished successfully");
         },
         Err(fault) => {
             println!("Program faulted: {:?}", fault);
@@ -134,5 +151,5 @@ fn main() {
         }
     }
 
-    println!("{}", core);
+    //println!("{}", core);
 }
