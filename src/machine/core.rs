@@ -1,6 +1,7 @@
 use std::fmt::Display;
 use std::sync::Arc;
-use crate::instruction::{CallTarget, ComparisonType, Condition, Instruction, JumpTarget, RegisterType, Source, Target};
+use crate::backtrace::BacktraceInfo;
+use crate::instruction::{CallTarget, ComparisonType, Condition, RealInstruction, JumpTarget, RegisterType, Source, Target};
 use crate::machine::{Fault, InstructionResult, Register};
 use crate::memory::Memory;
 use crate::program::{Module, StringTablePath};
@@ -134,12 +135,16 @@ impl Core {
                                frames: &mut Vec<*mut dyn StackFrame>,
                                mut memory: Memory,
                                continuation_store: &mut ContinuationStore,
+                               backtrace: &mut BacktraceInfo
     ) -> Result<InstructionResult,Fault> {
 
         let instruction = stack_frame.get_instruction();
 
-        use Instruction::*;
-        match instruction {
+
+        backtrace.set_row_column(instruction.line, instruction.column);
+
+        use RealInstruction::*;
+        match instruction.instruction {
             Halt => return Ok(InstructionResult::Stop),
             NoOp => (),
             Load(ref target, ref source) => self.load_instruction(target, source),

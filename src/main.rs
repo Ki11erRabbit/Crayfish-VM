@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use crate::backtrace::BacktraceInfo;
 use crate::instruction::{CallTarget, ComparisonType, Condition, Immediate, Instruction, JumpTarget, RegisterType, Source, Target};
+use crate::instruction::RealInstruction;
 use crate::machine::{call_main, Fault, InstructionResult};
 use crate::machine::core::{Core, CoreUtils};
 use crate::memory::Memory;
@@ -20,28 +21,28 @@ mod backtrace;
 
 
 fn dp_fib() -> Arc<[Instruction]> {
-    use Instruction::*;
+    use RealInstruction::*;
     Arc::new([
-        Load(Target(1, RegisterType::U64), Source::Immediate(Immediate::U64(0))),
-        Load(Target(2, RegisterType::U64), Source::Immediate(Immediate::U64(1))),
-        Load(Target(3, RegisterType::U64), Source::Immediate(Immediate::U64(2))),
-        Compare(Target(3, RegisterType::U64), Source::Immediate(Immediate::U64(10)), ComparisonType::Equal),
-        Return(Condition::Equal),
-        Add(Target(4, RegisterType::U64), Source::Register(1, RegisterType::U64), false, false),
-        Add(Target(4, RegisterType::U64), Source::Register(2, RegisterType::U64), false, false),
-        Load(Target(1, RegisterType::U64), Source::Register(2, RegisterType::U64)),
-        Load(Target(2, RegisterType::U64), Source::Register(4, RegisterType::U64)),
-        Sub(Target(4, RegisterType::U64), Source::Register(4, RegisterType::U64), false, false),
-        Add(Target(3, RegisterType::U64), Source::Immediate(Immediate::U64(1)), false, false),
-        Goto(JumpTarget::Relative(-8), Condition::Always),
+        Instruction::new_without_metadata(Load(Target(1, RegisterType::U64), Source::Immediate(Immediate::U64(0)))),
+        Instruction::new_without_metadata(Load(Target(2, RegisterType::U64), Source::Immediate(Immediate::U64(1)))),
+        Instruction::new_without_metadata(Load(Target(3, RegisterType::U64), Source::Immediate(Immediate::U64(2)))),
+        Instruction::new_without_metadata(Compare(Target(3, RegisterType::U64), Source::Immediate(Immediate::U64(10)), ComparisonType::Equal)),
+        Instruction::new_without_metadata(Return(Condition::Equal)),
+        Instruction::new_without_metadata(Add(Target(4, RegisterType::U64), Source::Register(1, RegisterType::U64), false, false)),
+        Instruction::new_without_metadata(Add(Target(4, RegisterType::U64), Source::Register(2, RegisterType::U64), false, false)),
+        Instruction::new_without_metadata(Load(Target(1, RegisterType::U64), Source::Register(2, RegisterType::U64))),
+        Instruction::new_without_metadata(Load(Target(2, RegisterType::U64), Source::Register(4, RegisterType::U64))),
+        Instruction::new_without_metadata(Sub(Target(4, RegisterType::U64), Source::Register(4, RegisterType::U64), false, false)),
+        Instruction::new_without_metadata(Add(Target(3, RegisterType::U64), Source::Immediate(Immediate::U64(1)), false, false)),
+        Instruction::new_without_metadata(Goto(JumpTarget::Relative(-8), Condition::Always)),
     ])
 }
 
 fn hello_world_main() -> Arc<[Instruction]> {
-    use Instruction::*;
+    use RealInstruction::*;
     Arc::new([
-        Call(CallTarget::Label("hello_world".into()), Condition::Always),
-        Return(Condition::Always),
+        Instruction::new_without_metadata(Call(CallTarget::Label("hello_world".into()), Condition::Always)),
+        Instruction::new_without_metadata(Return(Condition::Always)),
     ])
 }
 
@@ -66,41 +67,41 @@ fn print_string(core: &mut Core, module: Arc<Module>, stack_frames: &mut Vec<*mu
 }
 
 fn print_string_main() -> Arc<[Instruction]> {
-    use Instruction::*;
+    use RealInstruction::*;
     Arc::new([
-        GetStringRef(Target(8, RegisterType::U64), "".into(), 0),
-        Call(CallTarget::Label("print_string".into()), Condition::Always),
-        Return(Condition::Always),
+        Instruction::new_without_metadata(GetStringRef(Target(8, RegisterType::U64), "".into(), 0)),
+        Instruction::new_without_metadata(Call(CallTarget::Label("print_string".into()), Condition::Always)),
+        Instruction::new_without_metadata(Return(Condition::Always)),
     ])
 }
 
 
 fn rec_fib() -> Arc<[Instruction]> {
-    use Instruction::*;
+    use RealInstruction::*;
     Arc::new([
-        Compare(Target(1, RegisterType::U64), Source::Immediate(Immediate::U64(1)), ComparisonType::GreaterThan),
-        Goto(JumpTarget::Relative(3), Condition::GreaterThan),
-        Load(Target(0, RegisterType::U64), Source::Register(1, RegisterType::U64)),
-        Return(Condition::Always),
-        Sub(Target(1, RegisterType::U64), Source::Immediate(Immediate::U64(1)), false, false),
-        Push(Source::Register(1, RegisterType::U64)),
-        Call(CallTarget::Label("fib".into()), Condition::Always),
-        Pop(Target(1, RegisterType::U64)),
-        Sub(Target(1, RegisterType::U64), Source::Immediate(Immediate::U64(1)), false, false),
-        Push(Source::Register(0, RegisterType::U64)),
-        Call(CallTarget::Label("fib".into()), Condition::Always),
-        Pop(Target(2, RegisterType::U64)),
-        Add(Target(0, RegisterType::U64), Source::Register(2, RegisterType::U64), false, false),
-        Return(Condition::Always),
+        Instruction::new_without_metadata(Compare(Target(1, RegisterType::U64), Source::Immediate(Immediate::U64(1)), ComparisonType::GreaterThan)),
+        Instruction::new_without_metadata(Goto(JumpTarget::Relative(3), Condition::GreaterThan)),
+        Instruction::new_without_metadata(Load(Target(0, RegisterType::U64), Source::Register(1, RegisterType::U64))),
+        Instruction::new_without_metadata(Return(Condition::Always)),
+        Instruction::new_without_metadata(Sub(Target(1, RegisterType::U64), Source::Immediate(Immediate::U64(1)), false, false)),
+        Instruction::new_without_metadata(Push(Source::Register(1, RegisterType::U64))),
+        Instruction::new_without_metadata(Call(CallTarget::Label("fib".into()), Condition::Always)),
+        Instruction::new_without_metadata(Pop(Target(1, RegisterType::U64))),
+        Instruction::new_without_metadata(Sub(Target(1, RegisterType::U64), Source::Immediate(Immediate::U64(1)), false, false)),
+        Instruction::new_without_metadata(Push(Source::Register(0, RegisterType::U64))),
+        Instruction::new_without_metadata(Call(CallTarget::Label("fib".into()), Condition::Always)),
+        Instruction::new_without_metadata(Pop(Target(2, RegisterType::U64))),
+        Instruction::new_without_metadata(Add(Target(0, RegisterType::U64), Source::Register(2, RegisterType::U64), false, false)),
+        Instruction::new_without_metadata(Return(Condition::Always)),
     ])
 }
 
 fn rec_fib_main() -> Arc<[Instruction]> {
-    use Instruction::*;
+    use RealInstruction::*;
     Arc::new([
-        Load(Target(1, RegisterType::U64), Source::Immediate(Immediate::U64(10))),
-        Call(CallTarget::Label("fib".into()), Condition::Always),
-        Return(Condition::Always),
+        Instruction::new_without_metadata(Load(Target(1, RegisterType::U64), Source::Immediate(Immediate::U64(10)))),
+        Instruction::new_without_metadata(Call(CallTarget::Label("fib".into()), Condition::Always)),
+        Instruction::new_without_metadata(Return(Condition::Always)),
     ])
 }
 

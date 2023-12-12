@@ -231,7 +231,7 @@ pub fn call_bytecode_function(core: &mut Core,
     stack_frame.backup_registers(&core.registers);
 
     loop {
-        let result = core.execute_instruction(&mut stack_frame, &module, frames, memory.clone(), continuation_store)?;
+        let result = core.execute_instruction(&mut stack_frame, &module, frames, memory.clone(), continuation_store, backtrace)?;
         match result {
             InstructionResult::Continue => {},
             InstructionResult::Stop => {

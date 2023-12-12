@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Display};
 use crate::program::function::FunctionPath;
 use crate::program::StringTablePath;
 use crate::value::{Value, ValueType};
@@ -188,9 +189,52 @@ pub enum CallTarget {
     Closure(Source),
 }
 
+#[derive(Clone)]
+pub struct Instruction{
+    pub instruction: RealInstruction,
+    pub line: usize,
+    pub column: usize,
+}
 
+impl Instruction {
+    pub fn new(instruction: RealInstruction, line: usize, column: usize) -> Self {
+        Instruction {
+            instruction,
+            line,
+            column,
+        }
+    }
+
+    pub fn new_without_metadata(instruction: RealInstruction) -> Self {
+        Instruction {
+            instruction,
+            line: 0,
+            column: 0,
+        }
+    }
+
+    pub fn get_line(&self) -> usize {
+        self.line
+    }
+
+    pub fn get_column(&self) -> usize {
+        self.column
+    }
+}
+
+impl Display for Instruction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?} {}:{}", self.instruction, self.line, self.column)
+    }
+}
+
+impl Debug for Instruction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
 #[derive(Debug, Clone)]
-pub enum Instruction {
+pub enum RealInstruction {
     /// A halt instruction.
     /// This instruction stops the program.
     /// This instruction has no arguments.

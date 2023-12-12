@@ -40,6 +40,13 @@ impl BacktraceInfo {
     pub fn len(&self) -> usize {
         self.backtrace.len()
     }
+
+    pub fn set_row_column(&mut self, row: usize, column: usize) {
+        if let Some(entry) = self.backtrace.last_mut() {
+            entry.line = Some(row);
+            entry.column = Some(column);
+        }
+    }
 }
 
 impl Display for BacktraceInfo {
@@ -54,12 +61,12 @@ impl Display for BacktraceInfo {
 
 pub struct BacktraceEntry {
     pub(crate) function_name: FunctionPath,
-    pub(crate) line: Option<u64>,
-    pub(crate) column: Option<u64>,
+    pub(crate) line: Option<usize>,
+    pub(crate) column: Option<usize>,
 }
 
 impl BacktraceEntry {
-    pub fn new(function_name: FunctionPath, line: Option<u64>, column: Option<u64>) -> Self {
+    pub fn new(function_name: FunctionPath, line: Option<usize>, column: Option<usize>) -> Self {
         BacktraceEntry {
             function_name,
             line,
@@ -71,11 +78,11 @@ impl BacktraceEntry {
         self.function_name.to_string()
     }
 
-    pub fn get_line(&self) -> Option<u64> {
+    pub fn get_line(&self) -> Option<usize> {
         self.line
     }
 
-    pub fn get_column(&self) -> Option<u64> {
+    pub fn get_column(&self) -> Option<usize> {
         self.column
     }
 }
